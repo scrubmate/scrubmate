@@ -3533,15 +3533,21 @@ input{
       </div>
 
 
-      <div class="scurbOrderReadyMessage">
+      <div
+  class="scurbOrderReadyMessage"
+  id="scurbOrderReadyMessage"
+>
 
-        <i class="fa-regular fa-clock"></i>
+  <i
+    class="fa-regular fa-clock"
+    id="scurbOrderReadyIcon"
+  ></i>
 
-        <span>
-          Please stay available and get ready at your doorstep.
-        </span>
+  <span id="scurbOrderReadyText">
+    Please stay available and get ready at your doorstep.
+  </span>
 
-      </div>
+</div>
 
     </section>
 
@@ -3759,11 +3765,88 @@ input{
       </div>
 
     </section>
+<!-- CANCEL BOOKING BUTTON -->
 
+<div
+  class="scurbOrderCancelArea"
+  id="scurbOrderCancelArea"
+  hidden
+>
+
+  <button
+    type="button"
+    class="scurbOrderCancelButton"
+    id="scurbOrderCancelButton"
+  >
+    Cancel booking
+  </button>
+
+</div>
 
     <div class="scurbOrderBottomSpace"></div>
 
   </main>
+
+</section>
+<!-- =========================================
+     CANCEL BOOKING BOTTOM SHEET
+========================================= -->
+
+<section
+  class="scurbCancelSheetOverlay"
+  id="scurbCancelSheetOverlay"
+  aria-hidden="true"
+>
+
+  <div
+    class="scurbCancelSheet"
+    id="scurbCancelSheet"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="scurbCancelSheetTitle"
+  >
+
+    <button
+      type="button"
+      class="scurbCancelSheetClose"
+      id="scurbCancelSheetClose"
+      aria-label="Close"
+    >
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+
+    <h2 id="scurbCancelSheetTitle">
+      Cancel booking?
+    </h2>
+
+    <p>
+      Are you sure you want to cancel this booking?
+    </p>
+
+
+    <div class="scurbCancelSheetActions">
+
+      <button
+        type="button"
+        class="scurbCancelSheetNo"
+        id="scurbCancelSheetNo"
+      >
+        No
+      </button>
+
+
+      <button
+        type="button"
+        class="scurbCancelSheetYes"
+        id="scurbCancelSheetYes"
+      >
+        Yes, cancel
+      </button>
+
+    </div>
+
+  </div>
 
 </section>
 <div id="fanCleaningPopup"></div>
