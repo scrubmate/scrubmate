@@ -2481,22 +2481,47 @@ input{
   </header>
 
 
-  <section class="scurb-bookings-empty">
+ <!-- BOOKINGS LOADING -->
 
-    <div class="scurb-bookings-empty-icon">
+<section
+  class="scurb-bookings-loading"
+  id="scurbBookingsLoading"
+  hidden
+>
+  <i class="fa-solid fa-spinner fa-spin"></i>
+  <p>Loading your bookings...</p>
+</section>
 
-      <i
-        class="fa-regular fa-calendar-check"
-        id="scurbBookingsEmptyIcon"
-      ></i>
 
-    </div>
+<!-- BOOKINGS LIST -->
 
-    <p id="scurbBookingsEmptyText">
-      No upcoming bookings
-    </p>
+<section
+  class="scurb-bookings-list"
+  id="scurbBookingsList"
+></section>
 
-  </section>
+
+<!-- EMPTY BOOKINGS UI -->
+
+<section
+  class="scurb-bookings-empty"
+  id="scurbBookingsEmpty"
+>
+
+  <div class="scurb-bookings-empty-icon">
+
+    <i
+      class="fa-regular fa-calendar-check"
+      id="scurbBookingsEmptyIcon"
+    ></i>
+
+  </div>
+
+  <p id="scurbBookingsEmptyText">
+    No upcoming bookings
+  </p>
+
+</section>
 
 </main>
 
@@ -3393,7 +3418,354 @@ input{
 
 </section>
 
+<!-- =========================================
+     SCRUB MATE ORDER TRACKING PAGE
+========================================= -->
 
+<section
+  class="scurbOrderTrackingPage"
+  id="scurbOrderTrackingPage"
+  aria-hidden="true"
+>
+
+  <!-- MAP SECTION -->
+
+  <section class="scurbOrderMapSection">
+
+    <div
+      class="scurbOrderMap"
+      id="scurbOrderMap"
+    ></div>
+
+
+    <button
+      type="button"
+      class="scurbOrderBackButton"
+      id="scurbOrderBackButton"
+      aria-label="Go back"
+    >
+      <i class="fa-solid fa-chevron-left"></i>
+    </button>
+
+
+    
+
+  </section>
+
+
+  <!-- SCROLLABLE CONTENT -->
+
+  <main
+    class="scurbOrderTrackingContent"
+    id="scurbOrderTrackingContent"
+  >
+
+    <!-- MAIN STATUS -->
+
+    <section class="scurbOrderMainStatusCard">
+
+      <div class="scurbOrderMainStatusIcon">
+
+        <i
+          class="fa-solid fa-person-dress"
+          id="scurbOrderStatusIcon"
+        ></i>
+
+      </div>
+
+
+      <div class="scurbOrderMainStatusText">
+
+        <h1 id="scurbOrderStatusTitle">
+          Waiting for a professional cleaner
+        </h1>
+
+        <p id="scurbOrderStatusDescription">
+          We are finding an available professional cleaner near your location.
+        </p>
+
+      </div>
+
+    </section>
+
+
+    <!-- CLEANER DETAILS AFTER ACCEPTANCE -->
+
+    <section
+      class="scurbOrderCleanerCard"
+      id="scurbOrderCleanerCard"
+      hidden
+    >
+
+      <div class="scurbOrderCleanerTop">
+
+        <div class="scurbOrderCleanerAvatar">
+
+          <i class="fa-solid fa-person-dress"></i>
+
+        </div>
+
+
+        <div class="scurbOrderCleanerInformation">
+
+          <span>Your professional cleaner</span>
+
+          <strong id="scurbOrderCleanerName">
+            Cleaner name
+          </strong>
+
+          <p id="scurbOrderCleanerArrival">
+            Arriving in approximately 15 minutes
+          </p>
+
+        </div>
+
+
+        <a
+          class="scurbOrderCleanerCall"
+          id="scurbOrderCleanerCall"
+          href="#"
+          aria-label="Call cleaner"
+        >
+          <i class="fa-solid fa-phone"></i>
+        </a>
+
+      </div>
+
+
+      <div class="scurbOrderReadyMessage">
+
+        <i class="fa-regular fa-clock"></i>
+
+        <span>
+          Please stay available and get ready at your doorstep.
+        </span>
+
+      </div>
+
+    </section>
+
+
+    <!-- BOOKING DETAILS -->
+
+    <section class="scurbOrderCard">
+
+      <div class="scurbOrderSectionHeading">
+
+        <h2>Booking Details</h2>
+
+        <span
+          class="scurbOrderStatusBadge"
+          id="scurbOrderStatusBadge"
+        >
+          Placed
+        </span>
+
+      </div>
+
+
+      <div class="scurbOrderDetailsRow">
+
+        <div class="scurbOrderDetailsIcon">
+          <i class="fa-solid fa-receipt"></i>
+        </div>
+
+        <div>
+
+          <span>Booking ID</span>
+
+          <strong id="scurbOrderBookingId">
+            —
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <div class="scurbOrderDetailsRow">
+
+        <div class="scurbOrderDetailsIcon">
+          <i class="fa-regular fa-calendar"></i>
+        </div>
+
+        <div>
+
+          <span>Booking date</span>
+
+          <strong id="scurbOrderBookingDate">
+            —
+          </strong>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- SELECTED SERVICES -->
+
+    <section class="scurbOrderCard">
+
+      <div class="scurbOrderSectionHeading">
+        <h2>Selected Services</h2>
+      </div>
+
+      <div
+        class="scurbOrderServicesList"
+        id="scurbOrderServicesList"
+      ></div>
+
+    </section>
+
+
+    <!-- CUSTOMER DETAILS -->
+
+    <section class="scurbOrderCard">
+
+      <div class="scurbOrderSectionHeading">
+        <h2>Customer Details</h2>
+      </div>
+
+
+      <div class="scurbOrderDetailsRow">
+
+        <div class="scurbOrderDetailsIcon">
+          <i class="fa-solid fa-user"></i>
+        </div>
+
+        <div>
+
+          <span>Name</span>
+
+          <strong id="scurbOrderCustomerName">
+            —
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <div class="scurbOrderDetailsRow">
+
+        <div class="scurbOrderDetailsIcon">
+          <i class="fa-solid fa-phone"></i>
+        </div>
+
+        <div>
+
+          <span>Mobile number</span>
+
+          <strong id="scurbOrderCustomerMobile">
+            —
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <div class="scurbOrderDetailsRow">
+
+        <div class="scurbOrderDetailsIcon">
+          <i class="fa-solid fa-location-dot"></i>
+        </div>
+
+        <div>
+
+          <span>Service address</span>
+
+          <strong id="scurbOrderCustomerAddress">
+            —
+          </strong>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- BILL DETAILS -->
+
+    <section class="scurbOrderCard">
+
+      <div class="scurbOrderSectionHeading">
+        <h2>Bill Details</h2>
+      </div>
+
+
+      <div class="scurbOrderBillRow">
+
+        <span>Service total</span>
+
+        <strong id="scurbOrderServiceTotal">
+          ₹0
+        </strong>
+
+      </div>
+
+
+      <div class="scurbOrderBillRow scurbOrderSavingRow">
+
+        <span>Service discount</span>
+
+        <strong id="scurbOrderServiceDiscount">
+          − ₹0
+        </strong>
+
+      </div>
+
+
+      <div class="scurbOrderBillRow">
+
+        <span>Delivery fee</span>
+
+        <strong id="scurbOrderDeliveryFee">
+          FREE
+        </strong>
+
+      </div>
+
+
+      <div
+        class="scurbOrderBillRow scurbOrderSavingRow"
+        id="scurbOrderCouponRow"
+        hidden
+      >
+
+        <span>Coupon discount</span>
+
+        <strong id="scurbOrderCouponDiscount">
+          − ₹0
+        </strong>
+
+      </div>
+
+
+      <div class="scurbOrderBillDivider"></div>
+
+
+      <div class="scurbOrderBillRow scurbOrderFinalRow">
+
+        <span>Total amount</span>
+
+        <strong id="scurbOrderFinalAmount">
+          ₹0
+        </strong>
+
+      </div>
+
+    </section>
+
+
+    <div class="scurbOrderBottomSpace"></div>
+
+  </main>
+
+</section>
 <div id="fanCleaningPopup"></div>
 
 <div id="bedroomCleaningPopup"></div>
@@ -3423,6 +3795,7 @@ input{
 <script src="servicescripts/stagecleaning.js"></script>
 
 <script src="servicescripts/swepping.js"></script>
+<script src="bookingopen.js"></script>
 
 <script src="servicescripts/windowCleaning.js"></script>
 
