@@ -223,7 +223,7 @@ scurbFloatingCartBar.classList.remove("show");
 
   scurbBookingsNavButton.classList.add("active");
 
-  stopScurbBannerAutoSlide();
+  
 
   showScurbUpcomingBookings();
 }
