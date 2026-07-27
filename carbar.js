@@ -1389,31 +1389,44 @@ function getScurbStoredCoordinates(){
   let longitude = null;
 
 
-  for(const key of latitudeKeys){
+ for(const key of latitudeKeys){
 
-    const storedValue =
-      Number(localStorage.getItem(key));
+  const rawValue =
+    localStorage.getItem(key);
 
-    if(Number.isFinite(storedValue)){
-
-      latitude = storedValue;
-      break;
-    }
+  if(rawValue === null || rawValue === ""){
+    continue;
   }
 
+  const storedValue =
+    Number(rawValue);
 
-  for(const key of longitudeKeys){
+  if(Number.isFinite(storedValue)){
 
-    const storedValue =
-      Number(localStorage.getItem(key));
+    latitude = storedValue;
+    break;
+  }
+}
 
-    if(Number.isFinite(storedValue)){
 
-      longitude = storedValue;
-      break;
-    }
+for(const key of longitudeKeys){
+
+  const rawValue =
+    localStorage.getItem(key);
+
+  if(rawValue === null || rawValue === ""){
+    continue;
   }
 
+  const storedValue =
+    Number(rawValue);
+
+  if(Number.isFinite(storedValue)){
+
+    longitude = storedValue;
+    break;
+  }
+}
 
   if(
     !Number.isFinite(latitude) ||
@@ -1997,60 +2010,6 @@ if(scurbCartBottomTotal){
   updateScurbCartCustomerDetails();
 
 }
-function refreshScurbCartDeviceLocation(){
-
-  if(!navigator.geolocation){
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    function(position){
-
-      const latitude =
-        position.coords.latitude;
-
-      const longitude =
-        position.coords.longitude;
-
-
-      localStorage.setItem(
-        "scurbMateLatitude",
-        String(latitude)
-      );
-
-      localStorage.setItem(
-        "scurbMateLongitude",
-        String(longitude)
-      );
-
-
-      if(
-        scurbCartPage?.classList.contains(
-          "show"
-        )
-      ){
-
-        renderScurbCartPage();
-      }
-
-    },
-
-    function(error){
-
-      console.warn(
-        "Unable to get cart location:",
-        error.message
-      );
-
-    },
-
-    {
-      enableHighAccuracy:true,
-      timeout:10000,
-      maximumAge:30000
-    }
-  );
-}
 
 /* =========================================
    OPEN CART PAGE
@@ -2065,7 +2024,7 @@ function openScurbCartPage(){
   resetScurbCartSwipeStyles();
 
   renderScurbCartPage();
-refreshScurbCartDeviceLocation();
+
   scurbCartPage.style.transition = "";
   scurbCartPage.style.transform = "";
   scurbCartPage.style.opacity = "";
