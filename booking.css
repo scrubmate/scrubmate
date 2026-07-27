@@ -4,6 +4,7 @@
 
 .scurb-bookings-content{
   flex:1;
+  width:100%;
   min-height:0;
 
   display:none;
@@ -24,6 +25,9 @@
 ========================================= */
 
 .scurb-bookings-header{
+  position:relative;
+  z-index:5;
+
   flex:none;
 
   padding:
@@ -112,6 +116,272 @@
 
 
 /* =========================================
+   BOOKINGS LOADING
+========================================= */
+
+.scurb-bookings-loading{
+  flex:1;
+  min-height:0;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+
+  padding:20px;
+
+  color:#777777;
+
+  font-family:"Manrope",sans-serif;
+
+  overflow-y:auto;
+  overflow-x:hidden;
+
+  -webkit-overflow-scrolling:touch;
+}
+
+.scurb-bookings-loading[hidden]{
+  display:none;
+}
+
+.scurb-bookings-loading i{
+  color:var(--primary);
+
+  font-size:25px;
+}
+
+.scurb-bookings-loading p{
+  margin:0;
+
+  color:#777777;
+
+  font-size:14px;
+  font-weight:600;
+}
+
+
+/* =========================================
+   BOOKINGS LIST
+========================================= */
+
+.scurb-bookings-list{
+  flex:1;
+  min-height:0;
+
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+
+  padding:
+    18px
+    16px
+    calc(25px + env(safe-area-inset-bottom, 0px));
+
+  background:#f7f8f8;
+
+  overflow-y:auto;
+  overflow-x:hidden;
+
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+
+  touch-action:pan-y;
+}
+
+.scurb-bookings-list:empty{
+  display:none;
+}
+
+
+/* =========================================
+   BOOKING CARD
+========================================= */
+
+.scurb-booking-card{
+  flex:none;
+
+  width:100%;
+
+  padding:16px;
+
+  border:1px solid #ebebeb;
+  border-radius:18px;
+
+  background:#ffffff;
+
+  box-shadow:
+    0 6px 20px rgba(0,0,0,.055);
+}
+
+.scurb-booking-card-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.scurb-booking-id-wrap{
+  flex:1;
+  min-width:0;
+}
+
+.scurb-booking-label{
+  display:block;
+
+  margin-bottom:4px;
+
+  color:#888888;
+
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.4px;
+  text-transform:uppercase;
+}
+
+.scurb-booking-id{
+  display:block;
+
+  color:#171717;
+
+  font-size:14px;
+  font-weight:800;
+
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.scurb-booking-status{
+  flex:none;
+
+  padding:7px 11px;
+
+  border-radius:999px;
+
+  background:#e9fafa;
+  color:#079fa2;
+
+  font-size:11px;
+  font-weight:800;
+
+  text-transform:capitalize;
+}
+
+.scurb-booking-status.completed{
+  background:#eaf8ee;
+  color:#218442;
+}
+
+.scurb-booking-status.cancelled{
+  background:#fff0f0;
+  color:#d33b3b;
+}
+
+
+/* =========================================
+   BOOKING SERVICES
+========================================= */
+
+.scurb-booking-services{
+  margin-top:15px;
+
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+
+.scurb-booking-service{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.scurb-booking-service-name{
+  flex:1;
+  min-width:0;
+
+  color:#333333;
+
+  font-size:13px;
+  font-weight:650;
+
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.scurb-booking-service-quantity{
+  flex:none;
+
+  color:#777777;
+
+  font-size:12px;
+  font-weight:700;
+}
+
+.scurb-booking-more-services{
+  color:#079fa2;
+
+  font-size:12px;
+  font-weight:750;
+}
+
+
+/* =========================================
+   BOOKING DIVIDER
+========================================= */
+
+.scurb-booking-divider{
+  width:100%;
+  height:1px;
+
+  margin:15px 0;
+
+  background:#eeeeee;
+}
+
+
+/* =========================================
+   BOOKING BOTTOM DETAILS
+========================================= */
+
+.scurb-booking-bottom{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:15px;
+}
+
+.scurb-booking-date{
+  flex:1;
+  min-width:0;
+
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+
+  color:#777777;
+
+  font-size:12px;
+  font-weight:600;
+}
+
+.scurb-booking-date span{
+  line-height:1.4;
+}
+
+.scurb-booking-date i{
+  margin-right:5px;
+
+  color:var(--primary);
+}
+
+
+
+
+/* =========================================
    BOOKINGS EMPTY CONTENT
 ========================================= */
 
@@ -132,9 +402,20 @@
   text-align:center;
 
   background:#ffffff;
+
+  overflow-y:auto;
+  overflow-x:hidden;
+
+  -webkit-overflow-scrolling:touch;
+}
+
+.scurb-bookings-empty.hide{
+  display:none;
 }
 
 .scurb-bookings-empty-icon{
+  flex:none;
+
   width:112px;
   height:112px;
 
@@ -163,3 +444,67 @@
   font-weight:600;
   line-height:1.3;
 }
+/* =========================================
+   BOOKING CUSTOMER DETAILS
+========================================= */
+
+.scurb-booking-bottom{
+  align-items:flex-start;
+}
+
+.scurb-booking-date{
+  gap:11px;
+}
+
+.scurb-booking-created-date{
+  display:flex;
+  align-items:center;
+
+  color:#777777;
+
+  font-size:12px;
+  font-weight:650;
+}
+
+.scurb-booking-customer-details{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.scurb-booking-customer-row{
+  min-width:0;
+
+  display:grid;
+  grid-template-columns:18px minmax(0,1fr);
+  align-items:start;
+  gap:7px;
+
+  color:#4f4f4f;
+
+  font-size:12px;
+  font-weight:650;
+  line-height:1.4;
+}
+
+.scurb-booking-customer-row i{
+  width:18px;
+
+  margin-top:2px;
+
+  color:var(--primary);
+
+  font-size:12px;
+  text-align:center;
+}
+
+.scurb-booking-customer-row span{
+  min-width:0;
+
+  overflow-wrap:anywhere;
+}
+
+.scurb-booking-address-row{
+  max-width:230px;
+}
+
