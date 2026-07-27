@@ -2234,103 +2234,300 @@ scurbOrderBackButton?.addEventListener(
   "click",
   closeScurbOrderTracking
 );
+/* =========================================
+   ORDER TRACKING EDGE SWIPE BACK
+========================================= */
 
-})();
 let scurbOrderSwipeStartX = 0;
+let scurbOrderSwipeStartY = 0;
 let scurbOrderSwipeCurrentX = 0;
-let scurbOrderSwipeDragging = false;
+let scurbOrderSwipeCurrentY = 0;
+let scurbOrderSwipeFromLeft = false;
+let scurbOrderSwipeFromRight = false;
+let scurbOrderSwipeActive = false;
 
-const SCURB_ORDER_EDGE_SIZE = 35;
-const SCURB_ORDER_CLOSE_DISTANCE = 90;
-function setupScurbOrderSwipeBack(){
+const SCURB_ORDER_EDGE_SIZE = 45;
+const SCURB_ORDER_CLOSE_DISTANCE = 85;
+const SCURB_ORDER_VERTICAL_LIMIT = 70;
 
-  if(!scurbOrderTrackingPage){
+
+/* =========================================
+   START SWIPE
+========================================= */
+
+function startScurbOrderSwipe(event){
+
+  if(
+    !scurbOrderTrackingPage ||
+    !scurbOrderTrackingPage.classList.contains(
+      "show"
+    )
+  ){
     return;
   }
 
+  if(event.touches.length !== 1){
+    return;
+  }
+
+  const touch =
+    event.touches[0];
+
+  const pageRect =
+    scurbOrderTrackingPage.getBoundingClientRect();
+
+  const startX =
+    touch.clientX;
+
+  const startY =
+    touch.clientY;
+
+
+  scurbOrderSwipeFromLeft =
+    startX <=
+    pageRect.left +
+    SCURB_ORDER_EDGE_SIZE;
+
+  scurbOrderSwipeFromRight =
+    startX >=
+    pageRect.right -
+    SCURB_ORDER_EDGE_SIZE;
+
+
+  if(
+    !scurbOrderSwipeFromLeft &&
+    !scurbOrderSwipeFromRight
+  ){
+    return;
+  }
+
+
+  scurbOrderSwipeActive =
+    true;
+
+  scurbOrderSwipeStartX =
+    startX;
+
+  scurbOrderSwipeStartY =
+    startY;
+
+  scurbOrderSwipeCurrentX =
+    startX;
+
+  scurbOrderSwipeCurrentY =
+    startY;
+
+}
+
+
+/* =========================================
+   MOVE SWIPE
+========================================= */
+
+function moveScurbOrderSwipe(event){
+
+  if(
+    !scurbOrderSwipeActive ||
+    event.touches.length !== 1
+  ){
+    return;
+  }
+
+
+  const touch =
+    event.touches[0];
+
+  scurbOrderSwipeCurrentX =
+    touch.clientX;
+
+  scurbOrderSwipeCurrentY =
+    touch.clientY;
+
+
+  const deltaX =
+    scurbOrderSwipeCurrentX -
+    scurbOrderSwipeStartX;
+
+  const deltaY =
+    scurbOrderSwipeCurrentY -
+    scurbOrderSwipeStartY;
+
+
+  /*
+    Cancel when the user is scrolling
+    vertically instead of swiping back.
+  */
+
+  if(
+    Math.abs(deltaY) >
+    Math.abs(deltaX) &&
+    Math.abs(deltaY) > 15
+  ){
+
+    scurbOrderSwipeActive =
+      false;
+
+    return;
+
+  }
+
+
+  /*
+    Correct swipe directions:
+
+    Left edge  -> swipe right
+    Right edge -> swipe left
+  */
+
+  const validLeftMovement =
+    scurbOrderSwipeFromLeft &&
+    deltaX > 0;
+
+  const validRightMovement =
+    scurbOrderSwipeFromRight &&
+    deltaX < 0;
+
+
+  if(
+    validLeftMovement ||
+    validRightMovement
+  ){
+
+    event.preventDefault();
+
+  }
+
+}
+
+
+/* =========================================
+   END SWIPE
+========================================= */
+
+function endScurbOrderSwipe(){
+
+  if(!scurbOrderSwipeActive){
+    return;
+  }
+
+
+  const deltaX =
+    scurbOrderSwipeCurrentX -
+    scurbOrderSwipeStartX;
+
+  const deltaY =
+    scurbOrderSwipeCurrentY -
+    scurbOrderSwipeStartY;
+
+
+  const horizontalDistance =
+    Math.abs(deltaX);
+
+  const verticalDistance =
+    Math.abs(deltaY);
+
+
+  const validLeftSwipe =
+    scurbOrderSwipeFromLeft &&
+    deltaX >=
+    SCURB_ORDER_CLOSE_DISTANCE;
+
+  const validRightSwipe =
+    scurbOrderSwipeFromRight &&
+    deltaX <=
+    -SCURB_ORDER_CLOSE_DISTANCE;
+
+
+  scurbOrderSwipeActive =
+    false;
+
+  scurbOrderSwipeFromLeft =
+    false;
+
+  scurbOrderSwipeFromRight =
+    false;
+
+
+  if(
+    verticalDistance <=
+    SCURB_ORDER_VERTICAL_LIMIT &&
+    horizontalDistance >
+    verticalDistance &&
+    (
+      validLeftSwipe ||
+      validRightSwipe
+    )
+  ){
+
+    closeScurbOrderTracking();
+
+  }
+
+}
+
+
+/* =========================================
+   CANCEL SWIPE
+========================================= */
+
+function cancelScurbOrderSwipe(){
+
+  scurbOrderSwipeActive =
+    false;
+
+  scurbOrderSwipeFromLeft =
+    false;
+
+  scurbOrderSwipeFromRight =
+    false;
+
+}
+
+
+/* =========================================
+   ADD SWIPE EVENTS
+========================================= */
+
+if(scurbOrderTrackingPage){
+
   scurbOrderTrackingPage.addEventListener(
     "touchstart",
-    function(event){
-
-      if(event.touches.length !== 1){
-        return;
-      }
-
-      const touch =
-        event.touches[0];
-
-      const startX =
-        touch.clientX;
-
-      const screenWidth =
-        window.innerWidth;
-
-      if(
-        startX <= SCURB_ORDER_EDGE_SIZE ||
-        startX >=
-        screenWidth -
-        SCURB_ORDER_EDGE_SIZE
-      ){
-
-        scurbOrderSwipeDragging =
-          true;
-
-        scurbOrderSwipeStartX =
-          startX;
-
-        scurbOrderSwipeCurrentX =
-          startX;
-
-      }
-
-    },
-    { passive:true }
+    startScurbOrderSwipe,
+    {
+      passive:true,
+      capture:true
+    }
   );
 
 
   scurbOrderTrackingPage.addEventListener(
     "touchmove",
-    function(event){
-
-      if(!scurbOrderSwipeDragging){
-        return;
-      }
-
-      scurbOrderSwipeCurrentX =
-        event.touches[0].clientX;
-
-    },
-    { passive:true }
+    moveScurbOrderSwipe,
+    {
+      passive:false,
+      capture:true
+    }
   );
 
 
   scurbOrderTrackingPage.addEventListener(
     "touchend",
-    function(){
+    endScurbOrderSwipe,
+    {
+      passive:true,
+      capture:true
+    }
+  );
 
-      if(!scurbOrderSwipeDragging){
-        return;
-      }
 
-      const delta =
-        Math.abs(
-          scurbOrderSwipeCurrentX -
-          scurbOrderSwipeStartX
-        );
-
-      scurbOrderSwipeDragging =
-        false;
-
-      if(
-        delta >=
-        SCURB_ORDER_CLOSE_DISTANCE
-      ){
-
-        closeScurbOrderTracking();
-
-      }
-
+  scurbOrderTrackingPage.addEventListener(
+    "touchcancel",
+    cancelScurbOrderSwipe,
+    {
+      passive:true,
+      capture:true
     }
   );
 
 }
+})();
