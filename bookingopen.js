@@ -1396,7 +1396,7 @@ function updateScurbCancelButton(
 
 }
 /* =========================================
-   MAP VISIBILITY BY BOOKING STATUS
+   FINISHED BOOKING MAP MODE
 ========================================= */
 
 function isScurbTrackingFinishedStatus(
@@ -1419,71 +1419,6 @@ function isScurbTrackingFinishedStatus(
 }
 
 
-function updateScurbTrackingMapVisibility(
-  booking
-){
-
-  const mapElement =
-    document.getElementById(
-      "scurbOrderMap"
-    );
-
-  const mapSection =
-    mapElement?.closest(
-      ".scurbOrderMapSection"
-    ) || mapElement?.parentElement;
-
-
-  const shouldHideMap =
-    isScurbTrackingFinishedStatus(
-      booking?.booking_status
-    );
-
-
-  if(mapSection){
-
-    mapSection.hidden =
-      shouldHideMap;
-
-    mapSection.style.display =
-      shouldHideMap
-        ? "none"
-        : "";
-
-  }
-
-
-  if(shouldHideMap){
-
-    scurbTrackingCustomerMarker?.remove();
-    scurbTrackingCleanerMarker?.remove();
-    scurbTrackingRouteLine?.remove();
-
-    scurbTrackingCustomerMarker = null;
-    scurbTrackingCleanerMarker = null;
-    scurbTrackingRouteLine = null;
-
-    scurbTrackingRouteRequestId += 1;
-
-  }else if(scurbTrackingMap){
-
-    setTimeout(
-      function(){
-
-        scurbTrackingMap.invalidateSize();
-
-      },
-      80
-    );
-
-  }
-
-
-  return !shouldHideMap;
-
-}
-
-
 /* =========================================
    UPDATE STATUS
 ========================================= */
@@ -1491,10 +1426,6 @@ function updateScurbTrackingMapVisibility(
 function updateScurbOrderTrackingStatus(
   booking
 ){
-
-  updateScurbTrackingMapVisibility(
-    booking
-  );
 
   const status =
     normalizeScurbBookingStatus(
@@ -2101,15 +2032,6 @@ async function renderScurbBookedLocationMap(
 ){
 
   if(
-    !updateScurbTrackingMapVisibility(
-      booking
-    )
-  ){
-    return;
-  }
-
-
-  if(
     !window.L ||
     !document.getElementById(
       "scurbOrderMap"
@@ -2162,6 +2084,12 @@ async function renderScurbBookedLocationMap(
     Math.abs(cleanerLongitude) <= 180;
 
 
+  const finishedBooking =
+    isScurbTrackingFinishedStatus(
+      booking?.booking_status
+    );
+
+
   const mapLatitude =
     validCustomerLocation
       ? customerLatitude
@@ -2197,6 +2125,32 @@ async function renderScurbBookedLocationMap(
   }
 
 
+  /*
+    Always keep the map visible.
+    Clear old markers and route before drawing.
+  */
+
+  const mapElement =
+    document.getElementById(
+      "scurbOrderMap"
+    );
+
+  const mapSection =
+    mapElement?.closest(
+      ".scurbOrderMapSection"
+    ) || mapElement?.parentElement;
+
+  if(mapSection){
+
+    mapSection.hidden =
+      false;
+
+    mapSection.style.display =
+      "";
+
+  }
+
+
   scurbTrackingCustomerMarker?.remove();
   scurbTrackingCleanerMarker?.remove();
   scurbTrackingRouteLine?.remove();
@@ -2205,6 +2159,10 @@ async function renderScurbBookedLocationMap(
   scurbTrackingCleanerMarker = null;
   scurbTrackingRouteLine = null;
 
+
+  /*
+    CUSTOMER BOOKED LOCATION PIN
+  */
 
   const customerIcon =
     L.divIcon(
@@ -2243,6 +2201,43 @@ async function renderScurbBookedLocationMap(
 
   }
 
+
+  /*
+    COMPLETED / CANCELLED:
+    Keep map visible, but show only customer location.
+  */
+
+  if(finishedBooking){
+
+    scurbTrackingMap.setView(
+      [
+        mapLatitude,
+        mapLongitude
+      ],
+      validCustomerLocation
+        ? 18
+        : 17
+    );
+
+
+    setTimeout(
+      function(){
+
+        scurbTrackingMap.invalidateSize();
+
+      },
+      250
+    );
+
+    return;
+
+  }
+
+
+  /*
+    ACTIVE ORDER:
+    Show cleaner marker and route.
+  */
 
   if(validCleanerLocation){
 
@@ -2321,6 +2316,7 @@ async function renderScurbBookedLocationMap(
             scurbTrackingMap
           );
 
+
         scurbTrackingMap.fitBounds(
           scurbTrackingRouteLine.getBounds(),
           {
@@ -2391,6 +2387,7 @@ async function renderScurbBookedLocationMap(
           scurbTrackingMap
         );
 
+
       scurbTrackingMap.fitBounds(
         scurbTrackingRouteLine.getBounds(),
         {
@@ -2443,13 +2440,17 @@ async function renderScurbBookedLocationMap(
   }
 
 
-  setTimeout(function(){
+  setTimeout(
+    function(){
 
-    scurbTrackingMap.invalidateSize();
+      scurbTrackingMap.invalidateSize();
 
-  }, 250);
+    },
+    250
+  );
 
 }
+
 
 /* =========================================
    OPEN ORDER TRACKING
@@ -3558,32 +3559,24 @@ function updateOpenScurbTrackingWithoutBlink(
       Number(updatedBooking.cleaner_longitude);
 
 
-  const previousMapHidden =
+  const previousFinished =
     isScurbTrackingFinishedStatus(
       previousBooking?.booking_status
     );
 
-  const currentMapHidden =
+  const currentFinished =
     isScurbTrackingFinishedStatus(
       updatedBooking.booking_status
     );
 
-  const mapVisibilityChanged =
-    previousMapHidden !==
-    currentMapHidden;
-
-
-  updateScurbTrackingMapVisibility(
-    updatedBooking
-  );
+  const mapModeChanged =
+    previousFinished !==
+    currentFinished;
 
 
   if(
-    !currentMapHidden &&
-    (
-      locationChanged ||
-      mapVisibilityChanged
-    )
+    locationChanged ||
+    mapModeChanged
   ){
 
     renderScurbBookedLocationMap(
