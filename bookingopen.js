@@ -1396,12 +1396,105 @@ function updateScurbCancelButton(
 
 }
 /* =========================================
+   MAP VISIBILITY BY BOOKING STATUS
+========================================= */
+
+function isScurbTrackingFinishedStatus(
+  status
+){
+
+  return [
+    "completed",
+    "delivered",
+    "cancelled",
+    "canceled",
+    "rejected",
+    "refunded"
+  ].includes(
+    normalizeScurbBookingStatus(
+      status
+    )
+  );
+
+}
+
+
+function updateScurbTrackingMapVisibility(
+  booking
+){
+
+  const mapElement =
+    document.getElementById(
+      "scurbOrderMap"
+    );
+
+  const mapSection =
+    mapElement?.closest(
+      ".scurbOrderMapSection"
+    ) || mapElement?.parentElement;
+
+
+  const shouldHideMap =
+    isScurbTrackingFinishedStatus(
+      booking?.booking_status
+    );
+
+
+  if(mapSection){
+
+    mapSection.hidden =
+      shouldHideMap;
+
+    mapSection.style.display =
+      shouldHideMap
+        ? "none"
+        : "";
+
+  }
+
+
+  if(shouldHideMap){
+
+    scurbTrackingCustomerMarker?.remove();
+    scurbTrackingCleanerMarker?.remove();
+    scurbTrackingRouteLine?.remove();
+
+    scurbTrackingCustomerMarker = null;
+    scurbTrackingCleanerMarker = null;
+    scurbTrackingRouteLine = null;
+
+    scurbTrackingRouteRequestId += 1;
+
+  }else if(scurbTrackingMap){
+
+    setTimeout(
+      function(){
+
+        scurbTrackingMap.invalidateSize();
+
+      },
+      80
+    );
+
+  }
+
+
+  return !shouldHideMap;
+
+}
+
+
+/* =========================================
    UPDATE STATUS
 ========================================= */
 
 function updateScurbOrderTrackingStatus(
   booking
 ){
+
+  updateScurbTrackingMapVisibility(
+    booking
+  );
 
   const status =
     normalizeScurbBookingStatus(
@@ -2006,6 +2099,15 @@ function renderScurbOrderTrackingServices(
 async function renderScurbBookedLocationMap(
   booking
 ){
+
+  if(
+    !updateScurbTrackingMapVisibility(
+      booking
+    )
+  ){
+    return;
+  }
+
 
   if(
     !window.L ||
@@ -3455,7 +3557,34 @@ function updateOpenScurbTrackingWithoutBlink(
     Number(previousBooking?.cleaner_longitude) !==
       Number(updatedBooking.cleaner_longitude);
 
-  if(locationChanged){
+
+  const previousMapHidden =
+    isScurbTrackingFinishedStatus(
+      previousBooking?.booking_status
+    );
+
+  const currentMapHidden =
+    isScurbTrackingFinishedStatus(
+      updatedBooking.booking_status
+    );
+
+  const mapVisibilityChanged =
+    previousMapHidden !==
+    currentMapHidden;
+
+
+  updateScurbTrackingMapVisibility(
+    updatedBooking
+  );
+
+
+  if(
+    !currentMapHidden &&
+    (
+      locationChanged ||
+      mapVisibilityChanged
+    )
+  ){
 
     renderScurbBookedLocationMap(
       updatedBooking
