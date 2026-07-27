@@ -4821,14 +4821,133 @@ function createScrubMateBookingSheet(){
 /* =========================================
    OPEN CASH / UPI SHEET
 ========================================= */
+/* =========================================
+   CONTINUE BOOKING AFTER LOGIN
+========================================= */
+
+function continueScrubMateBookingAfterLogin(){
+
+  const shouldContinueBooking =
+    localStorage.getItem(
+      "scrubMateContinueBookingAfterLogin"
+    ) === "true";
+
+  if(!shouldContinueBooking){
+    return false;
+  }
+
+  localStorage.removeItem(
+    "scrubMateContinueBookingAfterLogin"
+  );
+
+  localStorage.removeItem(
+    "scrubMateGuestMode"
+  );
+
+  document
+    .getElementById("loginPage")
+    ?.style.setProperty(
+      "display",
+      "none"
+    );
+
+  document
+    .getElementById("scrubDetailsPage")
+    ?.classList.remove("show");
+
+  updateScurbHomeLocation();
+  openScurbHomePage();
+
+  /*
+    Reopen cart and booking sheet
+    after login is completed.
+  */
+
+  requestAnimationFrame(function(){
+
+    requestAnimationFrame(function(){
+
+      if(typeof openScurbCartPage === "function"){
+        openScurbCartPage();
+      }
+
+      setTimeout(function(){
+
+        openScrubMateBookingSheet();
+
+      }, 150);
+
+    });
+
+  });
+
+  return true;
+}
+/* =========================================
+   OPEN CASH / UPI SHEET
+========================================= */
 
 function openScrubMateBookingSheet(){
 
   const user =
     getScrubMateBookingUser();
 
-  if(!user.mobile || user.mobile.length !== 10){
-    alert("Please login before placing your booking.");
+  /*
+    USER IS NOT LOGGED IN
+    SAVE BOOKING RETURN FLAG
+    THEN OPEN LOGIN PAGE
+  */
+
+  if(
+    !user.mobile ||
+    user.mobile.length !== 10
+  ){
+
+    localStorage.setItem(
+      "scrubMateContinueBookingAfterLogin",
+      "true"
+    );
+
+    clearTimeout(scurbBookingTimer);
+    scurbBookingTimer = null;
+
+    closeScrubMateBookingSheet();
+
+    if(typeof closeScurbCartPage === "function"){
+      closeScurbCartPage();
+    }
+
+    document
+      .getElementById("scurbHomePage")
+      ?.classList.remove("show");
+
+    document
+      .getElementById("scrubDetailsPage")
+      ?.classList.remove("show");
+
+    const loginPage =
+      document.getElementById(
+        "loginPage"
+      );
+
+    if(loginPage){
+
+      loginPage.style.display =
+        "grid";
+
+    }
+
+    document.body.style.overflow =
+      "hidden";
+
+    setTimeout(function(){
+
+      document
+        .getElementById("mobileInput")
+        ?.focus();
+
+    }, 250);
+
     return;
   }
 
@@ -4854,50 +4973,117 @@ function openScrubMateBookingSheet(){
       "scrubMatePlaceBookingButton"
     );
 
-  document.getElementById(
-    "scrubMateBookingConfirmTotal"
-  ).textContent = `₹${bill.finalAmount}`;
+  const totalElement =
+    document.getElementById(
+      "scrubMateBookingConfirmTotal"
+    );
 
-  document.getElementById(
-    "scrubMateBookingConfirmAddress"
-  ).textContent = location.serviceAddress;
+  const addressElement =
+    document.getElementById(
+      "scrubMateBookingConfirmAddress"
+    );
+
+  if(!overlay || !button){
+    return;
+  }
+
+  if(totalElement){
+
+    totalElement.textContent =
+      `₹${bill.finalAmount}`;
+
+  }
+
+  if(addressElement){
+
+    addressElement.textContent =
+      location.serviceAddress;
+
+  }
 
   clearTimeout(scurbBookingTimer);
   scurbBookingTimer = null;
 
   button.disabled = false;
-  button.classList.remove("counting");
-  button.querySelector("span").textContent =
-    "Book Now";
+
+  button.classList.remove(
+    "counting"
+  );
+
+  const buttonText =
+    button.querySelector("span");
+
+  if(buttonText){
+
+    buttonText.textContent =
+      "Book Now";
+
+  }
 
   button.onclick = function(){
+
     void placeScrubMateCashBooking();
+
   };
 
   requestAnimationFrame(function(){
-    overlay.classList.add("show");
-    overlay.setAttribute("aria-hidden", "false");
+
+    overlay.classList.add(
+      "show"
+    );
+
+    overlay.setAttribute(
+      "aria-hidden",
+      "false"
+    );
+
   });
 
-  document.body.style.overflow = "hidden";
+  document.body.style.overflow =
+    "hidden";
+
+  /*
+    Start the 5-second fill animation.
+  */
 
   requestAnimationFrame(function(){
-    button.classList.remove("counting");
+
+    button.classList.remove(
+      "counting"
+    );
+
     void button.offsetWidth;
-    button.classList.add("counting");
+
+    button.classList.add(
+      "counting"
+    );
+
   });
 
-  /* Automatically place after the 5-second safety period. */
-  scurbBookingTimer = setTimeout(function(){
+  /*
+    Automatically book after 5 seconds
+    if the user does not click Book Now.
+  */
 
-    if(overlay.classList.contains("show")){
-      void placeScrubMateCashBooking();
-    }
+  scurbBookingTimer =
+    setTimeout(function(){
 
-  }, 5000);
+      if(
+        overlay.classList.contains(
+          "show"
+        )
+      ){
+
+        void placeScrubMateCashBooking();
+
+      }
+
+    }, 5000);
 }
 
-
+/* =========================================
+   CLOSE CASH / UPI SHEET
+========================================= */
 /* =========================================
    CLOSE CASH / UPI SHEET
 ========================================= */
@@ -4917,22 +5103,42 @@ function closeScrubMateBookingSheet(){
       "scrubMatePlaceBookingButton"
     );
 
-  overlay?.classList.remove("show");
-  overlay?.setAttribute("aria-hidden", "true");
+  overlay?.classList.remove(
+    "show"
+  );
+
+  overlay?.setAttribute(
+    "aria-hidden",
+    "true"
+  );
 
   if(button){
+
     button.disabled = false;
-    button.classList.remove("counting");
-    button.querySelector("span").textContent =
-      "Book Now";
+
+    button.classList.remove(
+      "counting"
+    );
+
+    const buttonText =
+      button.querySelector("span");
+
+    if(buttonText){
+
+      buttonText.textContent =
+        "Book Now";
+
+    }
+
   }
 
   document.body.style.overflow =
-    scurbCartPage?.classList.contains("show")
+    scurbCartPage?.classList.contains(
+      "show"
+    )
       ? "hidden"
       : "";
 }
-
 
 /* =========================================
    PLACE CASH / UPI BOOKING
