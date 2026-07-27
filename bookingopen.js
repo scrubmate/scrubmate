@@ -2234,6 +2234,8 @@ scurbOrderBackButton?.addEventListener(
   "click",
   closeScurbOrderTracking
 );
+
+})();
 let scurbOrderSwipeStartX = 0;
 let scurbOrderSwipeCurrentX = 0;
 let scurbOrderSwipeDragging = false;
@@ -2332,4 +2334,3 @@ function setupScurbOrderSwipeBack(){
   );
 
 }
-})();
