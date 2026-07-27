@@ -1,0 +1,165 @@
+/* =========================================
+   BOOKINGS PAGE CONTENT
+========================================= */
+
+.scurb-bookings-content{
+  flex:1;
+  min-height:0;
+
+  display:none;
+  flex-direction:column;
+
+  background:#ffffff;
+
+  overflow:hidden;
+}
+
+.scurb-bookings-content.show{
+  display:flex;
+}
+
+
+/* =========================================
+   BOOKINGS HEADER
+========================================= */
+
+.scurb-bookings-header{
+  flex:none;
+
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 34px)
+    20px
+    0;
+
+  background:#ffffff;
+
+  border-bottom:1px solid #eeeeee;
+}
+
+.scurb-bookings-header h1{
+  margin:35px 0 1px;
+
+  color:#202020;
+
+  font-size:22px;
+  font-weight:800;
+  line-height:1.2;
+}
+
+
+/* =========================================
+   UPCOMING / PAST TABS
+========================================= */
+
+.scurb-bookings-tabs{
+  position:relative;
+
+  width:100%;
+  height:56px;
+
+  display:grid;
+  grid-template-columns:1fr 1fr;
+}
+
+.scurb-bookings-tab{
+  height:56px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  padding:0;
+
+  border:none;
+  background:transparent;
+
+  color:#9a9a9a;
+
+  font-size:17px;
+  font-weight:700;
+
+  cursor:pointer;
+
+  -webkit-tap-highlight-color:transparent;
+}
+
+.scurb-bookings-tab.active{
+  color:#222222;
+}
+
+.scurb-bookings-indicator{
+  position:absolute;
+
+  left:0;
+  bottom:0;
+
+  width:50%;
+  height:3px;
+
+  border-radius:999px 999px 0 0;
+
+  background:var(--primary);
+
+  transform:translateX(0);
+
+  transition:transform .25s ease;
+}
+
+.scurb-bookings-tabs.past-active
+.scurb-bookings-indicator{
+  transform:translateX(100%);
+}
+
+
+/* =========================================
+   BOOKINGS EMPTY CONTENT
+========================================= */
+
+.scurb-bookings-empty{
+  flex:1;
+  min-height:0;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+
+  padding:
+    20px
+    20px
+    90px;
+
+  text-align:center;
+
+  background:#ffffff;
+}
+
+.scurb-bookings-empty-icon{
+  width:112px;
+  height:112px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  border-radius:26px;
+
+  background:rgba(20,185,187,.10);
+}
+
+.scurb-bookings-empty-icon i{
+  color:var(--primary);
+
+  font-size:58px;
+  line-height:1;
+}
+
+.scurb-bookings-empty p{
+  margin:24px 0 0;
+
+  color:#151515;
+
+  font-size:19px;
+  font-weight:600;
+  line-height:1.3;
+}
