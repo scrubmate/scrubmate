@@ -971,9 +971,13 @@
 
   color:#171717;
 
-  font-size:17px;
+  font-size:clamp(14px, 2.8vw, 17px);
   font-weight:850;
-  line-height:1.35;
+  line-height:1.2;
+
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 .scurbOrderMainStatusText p{
@@ -981,9 +985,13 @@
 
   color:#727272;
 
-  font-size:13px;
+  font-size:clamp(11px, 2.3vw, 13px);
   font-weight:600;
-  line-height:1.5;
+  line-height:1.2;
+
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 
