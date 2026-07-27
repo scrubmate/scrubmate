@@ -1273,6 +1273,12 @@ let scurbTrackingCleanerMarker = null;
 
 let scurbTrackingRouteLine = null;
 
+let scurbTrackingRouteRequestId = 0;
+
+let scurbBookingsRealtimeChannel = null;
+
+let scurbRealtimeRefreshTimer = null;
+
 
 /* =========================================
    CLEANER DETAILS
@@ -1762,8 +1768,10 @@ function showScurbAcceptedCleaner(
   booking,
   arrivalMinutes
 ){
-scurbOrderReadyMessage.hidden =
-  false;
+
+  scurbOrderReadyMessage.hidden =
+    false;
+
   const cleanerName =
     getScurbTrackingCleanerName(
       booking
@@ -1773,6 +1781,20 @@ scurbOrderReadyMessage.hidden =
     getScurbTrackingCleanerMobile(
       booking
     );
+
+  const status =
+    normalizeScurbBookingStatus(
+      booking?.booking_status
+    );
+
+  const hideCallButton = [
+    "completed",
+    "delivered",
+    "cancelled",
+    "canceled",
+    "rejected",
+    "refunded"
+  ].includes(status);
 
 
   scurbOrderCleanerCard.hidden =
@@ -1790,10 +1812,19 @@ scurbOrderReadyMessage.hidden =
       : "Professional cleaner assigned";
 
 
-  if(cleanerMobile.length === 10){
+  if(
+    cleanerMobile.length === 10 &&
+    !hideCallButton
+  ){
+
+    const dialNumber =
+      `+91${cleanerMobile}`;
 
     scurbOrderCleanerCall.href =
-      `tel:+91${cleanerMobile}`;
+      `tel:${dialNumber}`;
+
+    scurbOrderCleanerCall.dataset.mobile =
+      dialNumber;
 
     scurbOrderCleanerCall.style.display =
       "flex";
@@ -1804,12 +1835,41 @@ scurbOrderReadyMessage.hidden =
       "href"
     );
 
+    delete scurbOrderCleanerCall.dataset.mobile;
+
     scurbOrderCleanerCall.style.display =
       "none";
 
   }
 
 }
+
+/* =========================================
+   OPEN CLEANER NUMBER IN PHONE DIAL PAD
+========================================= */
+
+scurbOrderCleanerCall?.addEventListener(
+  "click",
+  function(event){
+
+    const dialNumber =
+      this.dataset.mobile || "";
+
+    if(!dialNumber){
+      event.preventDefault();
+      return;
+    }
+
+    event.preventDefault();
+
+    const dialUrl =
+      `tel:${dialNumber}`;
+
+    window.location.href =
+      dialUrl;
+
+  }
+);
 
 
 /* =========================================
@@ -1936,7 +1996,7 @@ function renderScurbOrderTrackingServices(
    RENDER BOOKED LOCATION MAP
 ========================================= */
 
-function renderScurbBookedLocationMap(
+async function renderScurbBookedLocationMap(
   booking
 ){
 
@@ -1950,54 +2010,53 @@ function renderScurbBookedLocationMap(
   }
 
 
-  /*
-    These are the exact coordinates saved
-    when the customer placed the booking.
-  */
+  const routeRequestId =
+    ++scurbTrackingRouteRequestId;
+
 
   const customerLatitude =
-  parseFloat(
-    booking.latitude
-  );
+    parseFloat(
+      booking.latitude
+    );
 
-const customerLongitude =
-  parseFloat(
-    booking.longitude
-  );
+  const customerLongitude =
+    parseFloat(
+      booking.longitude
+    );
 
-const cleanerLatitude =
-  parseFloat(
-    booking.cleaner_latitude
-  );
+  const cleanerLatitude =
+    parseFloat(
+      booking.cleaner_latitude
+    );
 
-const cleanerLongitude =
-  parseFloat(
-    booking.cleaner_longitude
-  );
-
-
-const validCustomerLocation =
-  Number.isFinite(customerLatitude) &&
-  Number.isFinite(customerLongitude) &&
-  customerLatitude !== 0 &&
-  customerLongitude !== 0 &&
-  Math.abs(customerLatitude) <= 90 &&
-  Math.abs(customerLongitude) <= 180;
+  const cleanerLongitude =
+    parseFloat(
+      booking.cleaner_longitude
+    );
 
 
-const validCleanerLocation =
-  Number.isFinite(cleanerLatitude) &&
-  Number.isFinite(cleanerLongitude) &&
-  cleanerLatitude !== 0 &&
-  cleanerLongitude !== 0 &&
-  Math.abs(cleanerLatitude) <= 90 &&
-  Math.abs(cleanerLongitude) <= 180;
+  const validCustomerLocation =
+    Number.isFinite(customerLatitude) &&
+    Number.isFinite(customerLongitude) &&
+    customerLatitude !== 0 &&
+    customerLongitude !== 0 &&
+    Math.abs(customerLatitude) <= 90 &&
+    Math.abs(customerLongitude) <= 180;
+
+
+  const validCleanerLocation =
+    Number.isFinite(cleanerLatitude) &&
+    Number.isFinite(cleanerLongitude) &&
+    cleanerLatitude !== 0 &&
+    cleanerLongitude !== 0 &&
+    Math.abs(cleanerLatitude) <= 90 &&
+    Math.abs(cleanerLongitude) <= 180;
+
 
   const mapLatitude =
     validCustomerLocation
       ? customerLatitude
       : 16.747578614935353;
-
 
   const mapLongitude =
     validCustomerLocation
@@ -2030,65 +2089,51 @@ const validCleanerLocation =
 
 
   scurbTrackingCustomerMarker?.remove();
-
   scurbTrackingCleanerMarker?.remove();
-
   scurbTrackingRouteLine?.remove();
 
+  scurbTrackingCustomerMarker = null;
+  scurbTrackingCleanerMarker = null;
+  scurbTrackingRouteLine = null;
 
-  /*
-    USER BOOKED LOCATION ICON
-  */
 
   const customerIcon =
-  L.divIcon(
-    {
-      className:"",
-      html:`
-        <div class="scurbOrderCustomerPin">
-          <div class="scurbOrderCustomerPinCircle">
-            <i class="fa-solid fa-location-dot"></i>
+    L.divIcon(
+      {
+        className:"",
+        html:`
+          <div class="scurbOrderCustomerPin">
+            <div class="scurbOrderCustomerPinCircle">
+              <i class="fa-solid fa-location-dot"></i>
+            </div>
+            <div class="scurbOrderCustomerPinPoint"></div>
           </div>
-          <div class="scurbOrderCustomerPinPoint"></div>
-        </div>
-      `,
-      iconSize:[52,62],
-      iconAnchor:[26,58]
-    }
-  );
+        `,
+        iconSize:[38,46],
+        iconAnchor:[19,43]
+      }
+    );
 
 
   if(validCustomerLocation){
 
-  scurbTrackingCustomerMarker =
-  L.marker(
-    [
-      customerLatitude,
-      customerLongitude
-    ],
-    {
-      icon:customerIcon,
-      zIndexOffset:1000
-    }
-  )
-  .addTo(
-    scurbTrackingMap
-  );
-
-scurbTrackingMap.setView(
-  [
-    customerLatitude,
-    customerLongitude
-  ],
-  18
-);
+    scurbTrackingCustomerMarker =
+      L.marker(
+        [
+          customerLatitude,
+          customerLongitude
+        ],
+        {
+          icon:customerIcon,
+          zIndexOffset:1000
+        }
+      )
+      .addTo(
+        scurbTrackingMap
+      );
 
   }
 
-
-  /*
-    CLEANER WOMAN ICON
-  */
 
   if(validCleanerLocation){
 
@@ -2114,43 +2159,128 @@ scurbTrackingMap.setView(
           cleanerLongitude
         ],
         {
-          icon:cleanerIcon
+          icon:cleanerIcon,
+          zIndexOffset:1100
         }
       )
       .addTo(
         scurbTrackingMap
-      )
-      .bindPopup(
-        getScurbTrackingCleanerName(
-          booking
-        ) ||
-        "Professional cleaner"
       );
 
+  }
 
-    if(validCustomerLocation){
+
+  if(
+    validCustomerLocation &&
+    validCleanerLocation
+  ){
+
+    const fallbackRoute =
+      function(){
+
+        if(
+          routeRequestId !==
+          scurbTrackingRouteRequestId
+        ){
+          return;
+        }
+
+        scurbTrackingRouteLine?.remove();
+
+        scurbTrackingRouteLine =
+          L.polyline(
+            [
+              [
+                cleanerLatitude,
+                cleanerLongitude
+              ],
+              [
+                customerLatitude,
+                customerLongitude
+              ]
+            ],
+            {
+              color:"#14b9bb",
+              weight:5,
+              opacity:.85,
+              dashArray:"8 8",
+              lineCap:"round",
+              lineJoin:"round"
+            }
+          )
+          .addTo(
+            scurbTrackingMap
+          );
+
+        scurbTrackingMap.fitBounds(
+          scurbTrackingRouteLine.getBounds(),
+          {
+            padding:[55,55],
+            maxZoom:17
+          }
+        );
+
+      };
+
+
+    try{
+
+      const routeUrl =
+        `https://router.project-osrm.org/route/v1/driving/` +
+        `${cleanerLongitude},${cleanerLatitude};` +
+        `${customerLongitude},${customerLatitude}` +
+        `?overview=full&geometries=geojson&steps=false`;
+
+      const response =
+        await fetch(
+          routeUrl,
+          {
+            method:"GET",
+            cache:"no-store"
+          }
+        );
+
+      if(!response.ok){
+        throw new Error(
+          "Unable to load road route"
+        );
+      }
+
+      const routeData =
+        await response.json();
+
+      if(
+        routeRequestId !==
+        scurbTrackingRouteRequestId
+      ){
+        return;
+      }
+
+      const routeGeometry =
+        routeData?.routes?.[0]?.geometry;
+
+      if(!routeGeometry){
+        throw new Error(
+          "Road route unavailable"
+        );
+      }
 
       scurbTrackingRouteLine =
-        L.polyline(
-          [
-            [
-              cleanerLatitude,
-              cleanerLongitude
-            ],
-            [
-              customerLatitude,
-              customerLongitude
-            ]
-          ],
+        L.geoJSON(
+          routeGeometry,
           {
-            weight:4,
-            opacity:.8
+            style:{
+              color:"#14b9bb",
+              weight:6,
+              opacity:.92,
+              lineCap:"round",
+              lineJoin:"round"
+            }
           }
         )
         .addTo(
           scurbTrackingMap
         );
-
 
       scurbTrackingMap.fitBounds(
         scurbTrackingRouteLine.getBounds(),
@@ -2160,17 +2290,36 @@ scurbTrackingMap.setView(
         }
       );
 
-    }else{
+    }catch(error){
 
-      scurbTrackingMap.setView(
-        [
-          cleanerLatitude,
-          cleanerLongitude
-        ],
-        16
+      console.warn(
+        "Road route unavailable, using direct line:",
+        error
       );
 
+      fallbackRoute();
+
     }
+
+  }else if(validCustomerLocation){
+
+    scurbTrackingMap.setView(
+      [
+        customerLatitude,
+        customerLongitude
+      ],
+      18
+    );
+
+  }else if(validCleanerLocation){
+
+    scurbTrackingMap.setView(
+      [
+        cleanerLatitude,
+        cleanerLongitude
+      ],
+      17
+    );
 
   }else{
 
@@ -2192,7 +2341,6 @@ scurbTrackingMap.setView(
   }, 250);
 
 }
-
 
 /* =========================================
    OPEN ORDER TRACKING
@@ -3014,4 +3162,151 @@ async function cancelScurbCurrentBooking(){
   }
 
 }
+
+/* =========================================
+   SUPABASE REALTIME BOOKINGS
+========================================= */
+
+function scheduleScurbRealtimeRefresh(){
+
+  clearTimeout(
+    scurbRealtimeRefreshTimer
+  );
+
+  scurbRealtimeRefreshTimer =
+    setTimeout(
+      async function(){
+
+        const mobile =
+          getScurbLoggedInMobile();
+
+        if(mobile.length !== 10){
+          return;
+        }
+
+        const openBookingId =
+          scurbCurrentTrackingBooking?.id ||
+          null;
+
+        await loadScurbBookings();
+
+        if(
+          openBookingId &&
+          scurbOrderTrackingPage?.classList.contains(
+            "show"
+          )
+        ){
+
+          const refreshedBooking =
+            scurbAllBookings.find(
+              function(item){
+                return item.id === openBookingId;
+              }
+            );
+
+          if(refreshedBooking){
+
+            scurbCurrentTrackingBooking =
+              refreshedBooking;
+
+            updateScurbCancelButton(
+              refreshedBooking
+            );
+
+            updateScurbOrderTrackingStatus(
+              refreshedBooking
+            );
+
+            renderScurbOrderTrackingServices(
+              refreshedBooking
+            );
+
+            renderScurbBookedLocationMap(
+              refreshedBooking
+            );
+
+          }
+
+        }
+
+      },
+      180
+    );
+
+}
+
+
+function setupScurbBookingsRealtime(){
+
+  const client =
+    window.supabaseClient ||
+    (typeof supabaseClient !== "undefined"
+      ? supabaseClient
+      : null);
+
+  if(
+    !client ||
+    scurbBookingsRealtimeChannel
+  ){
+    return;
+  }
+
+  scurbBookingsRealtimeChannel =
+    client
+      .channel(
+        "scrubmate-customer-bookings-live"
+      )
+      .on(
+        "postgres_changes",
+        {
+          event:"*",
+          schema:"public",
+          table:"scrubmate_orders"
+        },
+        function(payload){
+
+          const mobile =
+            getScurbLoggedInMobile();
+
+          if(mobile.length !== 10){
+            return;
+          }
+
+          const changedMobile =
+            String(
+              payload?.new?.customer_mobile ||
+              payload?.old?.customer_mobile ||
+              ""
+            )
+              .replace(/\D/g, "")
+              .slice(-10);
+
+          if(
+            changedMobile &&
+            changedMobile !== mobile
+          ){
+            return;
+          }
+
+          scheduleScurbRealtimeRefresh();
+
+        }
+      )
+      .subscribe(
+        function(status){
+
+          if(status === "SUBSCRIBED"){
+            console.log(
+              "Scrub Mate bookings realtime connected"
+            );
+          }
+
+        }
+      );
+
+}
+
+
+setupScurbBookingsRealtime();
+
 })();
