@@ -1142,7 +1142,20 @@ const scurbOrderCleanerArrival =
   document.getElementById(
     "scurbOrderCleanerArrival"
   );
+const scurbOrderReadyMessage =
+  document.getElementById(
+    "scurbOrderReadyMessage"
+  );
 
+const scurbOrderReadyIcon =
+  document.getElementById(
+    "scurbOrderReadyIcon"
+  );
+
+const scurbOrderReadyText =
+  document.getElementById(
+    "scurbOrderReadyText"
+  );
 const scurbOrderCleanerCall =
   document.getElementById(
     "scurbOrderCleanerCall"
@@ -1212,7 +1225,45 @@ const scurbOrderFinalAmount =
   document.getElementById(
     "scurbOrderFinalAmount"
   );
+const scurbOrderCancelArea =
+  document.getElementById(
+    "scurbOrderCancelArea"
+  );
 
+const scurbOrderCancelButton =
+  document.getElementById(
+    "scurbOrderCancelButton"
+  );
+
+const scurbCancelSheetOverlay =
+  document.getElementById(
+    "scurbCancelSheetOverlay"
+  );
+
+const scurbCancelSheet =
+  document.getElementById(
+    "scurbCancelSheet"
+  );
+
+const scurbCancelSheetClose =
+  document.getElementById(
+    "scurbCancelSheetClose"
+  );
+
+const scurbCancelSheetNo =
+  document.getElementById(
+    "scurbCancelSheetNo"
+  );
+
+const scurbCancelSheetYes =
+  document.getElementById(
+    "scurbCancelSheetYes"
+  );
+
+
+let scurbCurrentTrackingBooking = null;
+
+let scurbCancellingBooking = false;
 
 let scurbTrackingMap = null;
 
@@ -1288,7 +1339,49 @@ function hasScurbCleanerAccepted(
   ].includes(status);
 }
 
+/* =========================================
+   CANCEL BUTTON VISIBILITY
+========================================= */
 
+function canScurbBookingBeCancelled(
+  status
+){
+
+  const normalizedStatus =
+    normalizeScurbBookingStatus(
+      status
+    );
+
+  return [
+    "placed",
+    "confirmed",
+    "accepted",
+    "assigned",
+    "partner_assigned"
+  ].includes(
+    normalizedStatus
+  );
+
+}
+
+
+function updateScurbCancelButton(
+  booking
+){
+
+  if(!scurbOrderCancelArea){
+    return;
+  }
+
+  const canCancel =
+    canScurbBookingBeCancelled(
+      booking?.booking_status
+    );
+
+  scurbOrderCancelArea.hidden =
+    !canCancel;
+
+}
 /* =========================================
    UPDATE STATUS
 ========================================= */
@@ -1358,8 +1451,8 @@ function updateScurbOrderTrackingStatus(
 
     scurbOrderCleanerCard.hidden =
       true;
-
-    
+scurbOrderReadyMessage.hidden =
+  true;
 
     return;
   }
@@ -1390,7 +1483,14 @@ function updateScurbOrderTrackingStatus(
       arrivalMinutes
     );
 
- 
+ scurbOrderReadyMessage.hidden =
+  false;
+
+scurbOrderReadyIcon.className =
+  "fa-regular fa-clock";
+
+scurbOrderReadyText.textContent =
+  "Please stay available and get ready at your doorstep.";
 
     return;
   }
@@ -1416,7 +1516,14 @@ function updateScurbOrderTrackingStatus(
       arrivalMinutes
     );
 
-   
+   scurbOrderReadyMessage.hidden =
+  false;
+
+scurbOrderReadyIcon.className =
+  "fa-regular fa-clock";
+
+scurbOrderReadyText.textContent =
+  "Please stay available and get ready at your doorstep.";
 
     return;
   }
@@ -1445,7 +1552,14 @@ function updateScurbOrderTrackingStatus(
     scurbOrderCleanerArrival.textContent =
       "Cleaner reached your doorstep";
 
-   
+   scurbOrderReadyMessage.hidden =
+  false;
+
+scurbOrderReadyIcon.className =
+  "fa-solid fa-location-dot";
+
+scurbOrderReadyText.textContent =
+  "Please meet your professional cleaner at the doorstep.";
     return;
   }
 
@@ -1472,7 +1586,14 @@ function updateScurbOrderTrackingStatus(
 
     scurbOrderCleanerArrival.textContent =
       "Service is currently in progress";
+scurbOrderReadyMessage.hidden =
+  false;
 
+scurbOrderReadyIcon.className =
+  "fa-solid fa-broom";
+
+scurbOrderReadyText.textContent =
+  "Your selected cleaning services are being completed.";
 
 
     return;
@@ -1506,7 +1627,14 @@ function updateScurbOrderTrackingStatus(
 
       scurbOrderCleanerArrival.textContent =
         "Service completed successfully";
+scurbOrderReadyMessage.hidden =
+  false;
 
+scurbOrderReadyIcon.className =
+  "fa-solid fa-circle-check";
+
+scurbOrderReadyText.textContent =
+  "Thank you for choosing Scrub Mate.";
     }else{
 
       scurbOrderCleanerCard.hidden =
@@ -1525,26 +1653,28 @@ function updateScurbOrderTrackingStatus(
   */
 
   if(
-    status === "cancelled" ||
-    status === "canceled" ||
-    status === "rejected"
-  ){
+  status === "cancelled" ||
+  status === "canceled" ||
+  status === "rejected"
+){
 
-    scurbOrderStatusIcon.className =
-      "fa-solid fa-circle-xmark";
+  scurbOrderStatusIcon.className =
+    "fa-solid fa-circle-xmark";
 
-    scurbOrderStatusTitle.textContent =
-      "Booking cancelled";
+  scurbOrderStatusTitle.textContent =
+    "Booking cancelled";
 
-    scurbOrderStatusDescription.textContent =
-      "This booking is no longer active.";
+  scurbOrderStatusDescription.textContent =
+    "This booking is no longer active.";
 
-    scurbOrderCleanerCard.hidden =
-      true;
+  scurbOrderCleanerCard.hidden =
+    true;
 
+  scurbOrderReadyMessage.hidden =
+    true;
 
-    return;
-  }
+  return;
+}
 
 
   /*
@@ -1576,7 +1706,53 @@ function updateScurbOrderTrackingStatus(
   }
 
 }
+/* =========================================
+   CANCEL BUTTON EVENTS
+========================================= */
 
+scurbOrderCancelButton?.addEventListener(
+  "click",
+  openScurbCancelSheet
+);
+
+
+scurbCancelSheetClose?.addEventListener(
+  "click",
+  closeScurbCancelSheet
+);
+
+
+scurbCancelSheetNo?.addEventListener(
+  "click",
+  closeScurbCancelSheet
+);
+
+
+scurbCancelSheetYes?.addEventListener(
+  "click",
+  cancelScurbCurrentBooking
+);
+
+
+/*
+  Close when tapping dark background.
+*/
+
+scurbCancelSheetOverlay?.addEventListener(
+  "click",
+  function(event){
+
+    if(
+      event.target ===
+      scurbCancelSheetOverlay
+    ){
+
+      closeScurbCancelSheet();
+
+    }
+
+  }
+);
 
 /* =========================================
    SHOW ACCEPTED CLEANER
@@ -1586,7 +1762,8 @@ function showScurbAcceptedCleaner(
   booking,
   arrivalMinutes
 ){
-
+scurbOrderReadyMessage.hidden =
+  false;
   const cleanerName =
     getScurbTrackingCleanerName(
       booking
@@ -2028,7 +2205,12 @@ function openScurbBookingDetails(
   if(!scurbOrderTrackingPage){
     return;
   }
+scurbCurrentTrackingBooking =
+  booking;
 
+updateScurbCancelButton(
+  booking
+);
 
   const mobile =
     String(
@@ -2528,6 +2710,308 @@ if(scurbOrderTrackingPage){
       capture:true
     }
   );
+
+}
+/* =========================================
+   OPEN CANCEL SHEET
+========================================= */
+
+function openScurbCancelSheet(){
+
+  if(
+    !scurbCancelSheetOverlay ||
+    !scurbCurrentTrackingBooking ||
+    scurbCancellingBooking
+  ){
+    return;
+  }
+
+  if(
+    !canScurbBookingBeCancelled(
+      scurbCurrentTrackingBooking.booking_status
+    )
+  ){
+    updateScurbCancelButton(
+      scurbCurrentTrackingBooking
+    );
+
+    return;
+  }
+
+  scurbCancelSheetOverlay.classList.add(
+    "show"
+  );
+
+  scurbCancelSheetOverlay.setAttribute(
+    "aria-hidden",
+    "false"
+  );
+
+}
+
+
+/* =========================================
+   CLOSE CANCEL SHEET
+========================================= */
+
+function closeScurbCancelSheet(){
+
+  if(
+    !scurbCancelSheetOverlay ||
+    scurbCancellingBooking
+  ){
+    return;
+  }
+
+  scurbCancelSheetOverlay.classList.remove(
+    "show"
+  );
+
+  scurbCancelSheetOverlay.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+
+}
+/* =========================================
+   CANCEL BOOKING IN SUPABASE
+========================================= */
+
+async function cancelScurbCurrentBooking(){
+
+  if(
+    scurbCancellingBooking ||
+    !scurbCurrentTrackingBooking
+  ){
+    return;
+  }
+
+
+  const currentStatus =
+    normalizeScurbBookingStatus(
+      scurbCurrentTrackingBooking.booking_status
+    );
+
+
+  if(
+    !canScurbBookingBeCancelled(
+      currentStatus
+    )
+  ){
+
+    closeScurbCancelSheet();
+
+    updateScurbCancelButton(
+      scurbCurrentTrackingBooking
+    );
+
+    return;
+
+  }
+
+
+  scurbCancellingBooking =
+    true;
+
+
+  if(scurbCancelSheetYes){
+
+    scurbCancelSheetYes.disabled =
+      true;
+
+    scurbCancelSheetYes.textContent =
+      "Cancelling...";
+
+  }
+
+
+  if(scurbOrderCancelButton){
+
+    scurbOrderCancelButton.disabled =
+      true;
+
+  }
+
+
+  try{
+
+    const client =
+      window.supabaseClient ||
+      supabaseClient;
+
+
+    /*
+      Update only the exact order and only if
+      its current status is still cancellable.
+    */
+
+    let updateQuery =
+      client
+        .from("scrubmate_orders")
+        .update({
+          booking_status:"cancelled",
+          updated_at:new Date().toISOString()
+        });
+
+
+    if(scurbCurrentTrackingBooking.id){
+
+      updateQuery =
+        updateQuery.eq(
+          "id",
+          scurbCurrentTrackingBooking.id
+        );
+
+    }else{
+
+      updateQuery =
+        updateQuery.eq(
+          "order_id",
+          scurbCurrentTrackingBooking.order_id
+        );
+
+    }
+
+
+    const result =
+      await updateQuery
+        .in(
+          "booking_status",
+          [
+            "placed",
+            "confirmed",
+            "accepted",
+            "assigned",
+            "partner_assigned"
+          ]
+        )
+        .select(`
+          id,
+          order_id,
+          booking_status
+        `)
+        .maybeSingle();
+
+
+    if(result.error){
+      throw result.error;
+    }
+
+
+    if(!result.data){
+
+      throw new Error(
+        "This booking can no longer be cancelled."
+      );
+
+    }
+
+
+    /*
+      Update local opened booking.
+    */
+
+    scurbCurrentTrackingBooking.booking_status =
+      "cancelled";
+
+
+    /*
+      Update the booking in the main array.
+    */
+
+    const bookingIndex =
+      scurbAllBookings.findIndex(
+        function(item){
+
+          return (
+            item.id ===
+            scurbCurrentTrackingBooking.id
+          ) || (
+            item.order_id ===
+            scurbCurrentTrackingBooking.order_id
+          );
+
+        }
+      );
+
+
+    if(bookingIndex !== -1){
+
+      scurbAllBookings[
+        bookingIndex
+      ].booking_status =
+        "cancelled";
+
+    }
+
+
+    /*
+      Update tracking screen immediately.
+    */
+
+    updateScurbOrderTrackingStatus(
+      scurbCurrentTrackingBooking
+    );
+
+    updateScurbCancelButton(
+      scurbCurrentTrackingBooking
+    );
+
+
+    /*
+      Move cancelled booking to Past.
+    */
+
+    renderScurbBookings();
+
+
+    scurbCancelSheetOverlay.classList.remove(
+      "show"
+    );
+
+    scurbCancelSheetOverlay.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+
+
+  }catch(error){
+
+    console.error(
+      "Unable to cancel booking:",
+      error
+    );
+
+    alert(
+      error?.message ||
+      "Unable to cancel the booking. Please try again."
+    );
+
+  }finally{
+
+    scurbCancellingBooking =
+      false;
+
+
+    if(scurbCancelSheetYes){
+
+      scurbCancelSheetYes.disabled =
+        false;
+
+      scurbCancelSheetYes.textContent =
+        "Yes, cancel";
+
+    }
+
+
+    if(scurbOrderCancelButton){
+
+      scurbOrderCancelButton.disabled =
+        false;
+
+    }
+
+  }
 
 }
 })();
