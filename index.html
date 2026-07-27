@@ -3825,7 +3825,16 @@ void saveScrubProfileSilently(
     );
 
     scrubDetailsPage.classList.remove("show");
+/*
+  User originally came from Book Now.
+  Return directly to that booking.
+*/
 
+if(
+  continueScrubMateBookingAfterLogin()
+){
+  return;
+}
 
 const loginFromGuestProfile =
   localStorage.getItem(
