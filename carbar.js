@@ -3259,3 +3259,2370 @@ if(scurbCouponEmptyState){
 
     }
   );
+/* =========================================
+   SCRUB MATE PAYMENT + BOOKING FLOW
+   CASH / UPI ON SERVICE + RAZORPAY ONLINE
+========================================= */
+
+const scurbCartPayOnlineButton =
+  document.getElementById("scurbCartPayOnlineButton");
+
+const scurbCartCashButton =
+  document.getElementById("scurbCartCashButton");
+
+let scurbBookingTimer = null;
+let scurbBookingSaving = false;
+
+
+/* =========================================
+   GET SUPABASE CLIENT
+========================================= */
+
+function getScrubMateSupabaseClient(){
+
+  if(
+    typeof supabaseClient !== "undefined" &&
+    supabaseClient?.from
+  ){
+    return supabaseClient;
+  }
+
+  if(window.supabaseClient?.from){
+    return window.supabaseClient;
+  }
+
+  if(window.scrubMateSupabase?.from){
+    return window.scrubMateSupabase;
+  }
+
+  throw new Error(
+    "Supabase client was not found. Keep your existing supabaseClient connection loaded before this file."
+  );
+}
+
+
+/* =========================================
+   READ SAVED CUSTOMER
+========================================= */
+
+function getScrubMateBookingUser(){
+
+  let user = null;
+
+  try{
+    user = JSON.parse(
+      localStorage.getItem("scrubMateUser") || "null"
+    );
+  }catch(error){
+    user = null;
+  }
+
+  const name =
+    user?.name ||
+    localStorage.getItem("scrubMateName") ||
+    [
+      localStorage.getItem("scrubMateFirstName"),
+      localStorage.getItem("scrubMateLastName")
+    ]
+      .filter(Boolean)
+      .join(" ") ||
+    "Scrub Mate User";
+
+  const mobile = String(
+    user?.mobile ||
+    user?.phoneNumber ||
+    localStorage.getItem("scrubMateMobile") ||
+    ""
+  )
+    .replace(/\D/g, "")
+    .slice(-10);
+
+  const email =
+    user?.email ||
+    localStorage.getItem("scrubMateEmail") ||
+    "";
+
+  return {
+    ...user,
+    name,
+    mobile,
+    email
+  };
+}
+
+
+/* =========================================
+   READ SAVED ADDRESS + LOCATION
+========================================= */
+
+function getScrubMateBookingLocation(){
+
+  const coordinates =
+    getScurbStoredCoordinates();
+
+  const streetName =
+    localStorage.getItem("scurbMateStreetName") || "";
+
+  const neighbourhood =
+    localStorage.getItem("scurbMateNeighbourhood") || "";
+
+  const village =
+    localStorage.getItem("scurbMateVillage") || "";
+
+  const city =
+    localStorage.getItem("scurbMateCity") || "";
+
+  const district =
+    localStorage.getItem("scurbMateDistrict") || "";
+
+  const state =
+    localStorage.getItem("scurbMateState") || "";
+
+  const postalCode =
+    localStorage.getItem("scurbMatePostcode") ||
+    localStorage.getItem("scurbMatePostalCode") ||
+    "";
+
+  const serviceAddress =
+    localStorage.getItem("scurbMateFullAddress") ||
+    [
+      streetName,
+      neighbourhood,
+      village,
+      city,
+      district,
+      state,
+      postalCode
+    ]
+      .filter(Boolean)
+      .join(", ") ||
+    "Your selected address";
+
+  return {
+    serviceAddress,
+    streetName,
+    neighbourhood,
+    village,
+    city,
+    district,
+    state,
+    postalCode,
+    latitude:coordinates?.latitude ?? null,
+    longitude:coordinates?.longitude ?? null
+  };
+}
+
+
+/* =========================================
+   CREATE COMPLETE BOOKING SNAPSHOT
+========================================= */
+
+function getScrubMateBookingSnapshot(){
+
+  const activeItems =
+    scurbServiceCart.filter(function(item){
+      return Number(item.quantity || 0) > 0;
+    });
+
+  const originalServiceTotal =
+    activeItems.reduce(function(total, item){
+      return total +
+        Number(item.originalPrice || item.price || 0) *
+        Number(item.quantity || 0);
+    }, 0);
+
+  const serviceTotal =
+    activeItems.reduce(function(total, item){
+      return total +
+        Number(item.price || 0) *
+        Number(item.quantity || 0);
+    }, 0);
+
+  const serviceDiscount =
+    Math.max(
+      0,
+      originalServiceTotal - serviceTotal
+    );
+
+  const deliveryDetails =
+    getScurbDeliveryDetails();
+
+  const deliveryFee =
+    Number(deliveryDetails.fee || 0);
+
+  const couponDiscount =
+    getScurbCouponDiscount(serviceTotal);
+
+  const subtotal =
+    serviceTotal + deliveryFee;
+
+  const finalAmount =
+    Math.max(
+      0,
+      subtotal - couponDiscount
+    );
+
+  const services =
+    activeItems.map(function(item){
+
+      const quantity =
+        Number(item.quantity || 0);
+
+      const unitPrice =
+        Number(item.price || 0);
+
+      const originalUnitPrice =
+        Number(
+          item.originalPrice ||
+          item.price ||
+          0
+        );
+
+      return {
+        name:item.name,
+        quantity,
+        quantity_label:
+          getScurbCartQuantityLabel(
+            item.name,
+            quantity
+          ),
+        unit_price:unitPrice,
+        original_unit_price:originalUnitPrice,
+        line_total:unitPrice * quantity,
+        original_line_total:
+          originalUnitPrice * quantity,
+        discount:
+          Math.max(
+            0,
+            (originalUnitPrice - unitPrice) *
+            quantity
+          )
+      };
+    });
+
+  return {
+    services,
+    totalServiceTypes:activeItems.length,
+    totalQuantity:
+      activeItems.reduce(function(total, item){
+        return total + Number(item.quantity || 0);
+      }, 0),
+    originalServiceTotal,
+    serviceTotal,
+    serviceDiscount,
+    deliveryDetails,
+    deliveryFee,
+    couponDiscount,
+    subtotal,
+    finalAmount
+  };
+}
+
+
+/* =========================================
+   PLATFORM NAME
+========================================= */
+
+function getScrubMatePlatform(){
+
+  const userAgent =
+    navigator.userAgent || "";
+
+  if(/iphone|ipad|ipod/i.test(userAgent)){
+    return "ios";
+  }
+
+  if(/android/i.test(userAgent)){
+    return "android";
+  }
+
+  return "web";
+}
+
+
+/* =========================================
+   BUILD DATABASE ROW
+========================================= */
+
+function buildScrubMateOrderRow(
+  paymentMethod,
+  paymentStatus,
+  razorpayDetails = {}
+){
+
+  const user =
+    getScrubMateBookingUser();
+
+  const location =
+    getScrubMateBookingLocation();
+
+  const bill =
+    getScrubMateBookingSnapshot();
+
+  const couponApplied =
+    scurbAppliedCoupon &&
+    bill.couponDiscount > 0;
+
+  return {
+    customer_name:user.name,
+    customer_mobile:user.mobile,
+    customer_email:user.email || null,
+    customer_type:
+      localStorage.getItem("scrubMateGuestMode") === "true"
+        ? "guest"
+        : "registered",
+
+    service_address:location.serviceAddress,
+    street_name:location.streetName || null,
+    neighbourhood:location.neighbourhood || null,
+    village:location.village || null,
+    city:location.city || null,
+    district:location.district || null,
+    state:location.state || null,
+    postal_code:location.postalCode || null,
+    latitude:location.latitude,
+    longitude:location.longitude,
+
+    service_center_latitude:
+      SCURB_SERVICE_CENTER_LAT,
+    service_center_longitude:
+      SCURB_SERVICE_CENTER_LON,
+    distance_km:
+      bill.deliveryDetails.distanceKm === null
+        ? 0
+        : Number(
+            bill.deliveryDetails.distanceKm.toFixed(3)
+          ),
+    distance_text:
+      bill.deliveryDetails.distanceText,
+    delivery_fee:bill.deliveryFee,
+    delivery_fee_rule:
+      "First 1 km free, ₹5 per extra km, maximum ₹40",
+
+    services:bill.services,
+    total_service_types:bill.totalServiceTypes,
+    total_quantity:bill.totalQuantity,
+
+    original_service_total:
+      bill.originalServiceTotal,
+    service_total:bill.serviceTotal,
+    service_discount:bill.serviceDiscount,
+
+    coupon_code:
+      couponApplied
+        ? SCURB_COUPON_CODE
+        : null,
+    coupon_applied:couponApplied,
+    coupon_discount:
+      couponApplied
+        ? bill.couponDiscount
+        : 0,
+    coupon_rule:
+      couponApplied
+        ? "₹50 off above ₹400; ₹60 off above ₹600"
+        : null,
+    coupon_applied_at:
+      couponApplied
+        ? new Date().toISOString()
+        : null,
+
+    subtotal:bill.subtotal,
+    final_amount:bill.finalAmount,
+    currency:"INR",
+
+    payment_method:paymentMethod,
+    payment_status:paymentStatus,
+    payment_amount:bill.finalAmount,
+    paid_at:
+      paymentStatus === "paid"
+        ? new Date().toISOString()
+        : null,
+
+    razorpay_order_id:
+      razorpayDetails.razorpay_order_id || null,
+    razorpay_payment_id:
+      razorpayDetails.razorpay_payment_id || null,
+    razorpay_signature:
+      razorpayDetails.razorpay_signature || null,
+    razorpay_payment_method:
+      razorpayDetails.razorpay_payment_method || null,
+
+    booking_status:"placed",
+    booking_type:"instant",
+
+    app_platform:getScrubMatePlatform(),
+    app_version:
+      localStorage.getItem("scrubMateAppVersion") || null,
+
+    metadata:{
+      source:"scrubmate_cart",
+      booked_at:new Date().toISOString()
+    }
+  };
+}
+
+
+/* =========================================
+   SAVE BOOKING TO SUPABASE
+========================================= */
+
+async function saveScrubMateBooking(
+  paymentMethod,
+  paymentStatus,
+  razorpayDetails = {}
+){
+
+  if(scurbBookingSaving){
+    return {
+      success:false,
+      message:"Booking is already being placed."
+    };
+  }
+
+  const user =
+    getScrubMateBookingUser();
+
+  if(!user.mobile || user.mobile.length !== 10){
+    return {
+      success:false,
+      message:"Please login with your mobile number first."
+    };
+  }
+
+  const bill =
+    getScrubMateBookingSnapshot();
+
+  if(!bill.services.length){
+    return {
+      success:false,
+      message:"Your cart is empty."
+    };
+  }
+
+  try{
+
+    scurbBookingSaving = true;
+
+    const client =
+      getScrubMateSupabaseClient();
+
+    const orderRow =
+      buildScrubMateOrderRow(
+        paymentMethod,
+        paymentStatus,
+        razorpayDetails
+      );
+
+    const result =
+      await client
+        .from("scrubmate_orders")
+        .insert(orderRow)
+        .select("id, order_id")
+        .single();
+
+    if(result.error){
+      throw result.error;
+    }
+
+    return {
+      success:true,
+      order:result.data
+    };
+
+  }catch(error){
+
+    console.error(
+      "Unable to save Scrub Mate booking:",
+      error
+    );
+
+    return {
+      success:false,
+      message:
+        error?.message ||
+        "Unable to place booking. Please try again."
+    };
+
+  }finally{
+    scurbBookingSaving = false;
+  }
+}
+
+
+/* =========================================
+   CLEAR CART AFTER SUCCESS
+========================================= */
+
+function clearScrubMateCartAfterBooking(){
+
+  scurbServiceCart = [];
+
+  localStorage.removeItem(
+    "scurbMateServiceCart"
+  );
+
+  localStorage.removeItem(
+    "scurbMateAppliedCoupon"
+  );
+
+  scurbAppliedCoupon = false;
+
+  updateScurbServiceButtons();
+  updateScurbFloatingCartBar();
+  updateScurbPopupBookButtons();
+
+  closeScurbCartPage();
+}
+
+
+/* =========================================
+   BOOKING SUCCESS ALERT
+========================================= */
+/* =========================================
+   CREATE BOOKING SUCCESS PAGE
+========================================= */
+
+function createScrubMateBookingSuccessPage(){
+
+  if(
+    document.getElementById(
+      "scrubMateBookingSuccessPage"
+    )
+  ){
+    return;
+  }
+
+  const style =
+    document.createElement("style");
+
+  style.id =
+    "scrubMateBookingSuccessStyle";
+
+  style.textContent = `
+    .scrubMateBookingSuccessPage{
+      position:fixed;
+      inset:0;
+      z-index:2000000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:
+        calc(24px + env(safe-area-inset-top))
+        24px
+        calc(40px + env(safe-area-inset-bottom));
+      background:
+        radial-gradient(
+          circle at center,
+          #f3ffff 0%,
+          #ffffff 52%,
+          #ffffff 100%
+        );
+      opacity:0;
+      visibility:hidden;
+      overflow:hidden;
+      transition:
+        opacity .28s ease,
+        visibility .28s ease;
+      font-family:"Manrope",Arial,sans-serif;
+    }
+
+    .scrubMateBookingSuccessPage.show{
+      opacity:1;
+      visibility:visible;
+    }
+
+    .scrubMateBookingSuccessContent{
+      position:relative;
+      width:100%;
+      max-width:420px;
+      text-align:center;
+      opacity:0;
+      transform:
+        translateY(20px)
+        scale(.94);
+      transition:
+        opacity .45s ease,
+        transform .55s
+        cubic-bezier(.22,.9,.32,1);
+    }
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateBookingSuccessContent{
+      opacity:1;
+      transform:
+        translateY(0)
+        scale(1);
+    }
+
+    /* =========================================
+       SUCCESS ANIMATION AREA
+    ========================================= */
+
+   .scrubMateSuccessAnimation{
+  position:relative;
+  width:210px;
+  height:180px;
+  margin:0 auto 2px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+    .scrubMateSuccessGlow{
+      position:absolute;
+      width:150px;
+      height:150px;
+      border-radius:50%;
+      background:
+        rgba(20,185,187,.16);
+      transform:scale(.6);
+      opacity:0;
+    }
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateSuccessGlow{
+      animation:
+        scrubMateSuccessGlowPulse
+        1.6s
+        .1s
+        ease-out both;
+    }
+
+    .scrubMateSuccessCircle{
+      position:relative;
+      z-index:4;
+      width:118px;
+      height:118px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:50%;
+      background:
+        linear-gradient(
+          145deg,
+          #20c9cb,
+          #109fa1
+        );
+      box-shadow:
+        0 18px 42px
+        rgba(20,185,187,.30),
+        inset 0 1px 0
+        rgba(255,255,255,.35);
+      opacity:0;
+      transform:scale(.4);
+    }
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateSuccessCircle{
+      animation:
+        scrubMateSuccessCirclePop
+        .72s
+        cubic-bezier(.22,.9,.32,1)
+        forwards;
+    }
+
+    /* =========================================
+       SMOOTH DRAWING TICK
+    ========================================= */
+
+    .scrubMateSuccessTickSvg{
+      width:60px;
+      height:60px;
+      overflow:visible;
+    }
+
+    .scrubMateSuccessTickPath{
+      fill:none;
+      stroke:#ffffff;
+      stroke-width:7;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      stroke-dasharray:70;
+      stroke-dashoffset:70;
+    }
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateSuccessTickPath{
+      animation:
+        scrubMateDrawTick
+        .7s
+        .42s
+        cubic-bezier(.4,0,.2,1)
+        forwards;
+    }
+
+    /* =========================================
+       STARS
+    ========================================= */
+
+    .scrubMateSuccessStar{
+      position:absolute;
+      z-index:3;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#ffba2e;
+      opacity:0;
+      transform:scale(.2);
+      filter:
+        drop-shadow(
+          0 4px 7px
+          rgba(255,186,46,.30)
+        );
+    }
+
+    .scrubMateSuccessStar svg{
+      width:100%;
+      height:100%;
+      fill:currentColor;
+    }
+
+    .scrubMateSuccessStar.star1{
+      width:25px;
+      height:25px;
+      top:15px;
+      left:92px;
+    }
+
+    .scrubMateSuccessStar.star2{
+      width:18px;
+      height:18px;
+      top:50px;
+      right:17px;
+    }
+
+    .scrubMateSuccessStar.star3{
+      width:27px;
+      height:27px;
+      bottom:43px;
+      right:14px;
+    }
+
+    .scrubMateSuccessStar.star4{
+      width:18px;
+      height:18px;
+      bottom:13px;
+      left:94px;
+    }
+
+    .scrubMateSuccessStar.star5{
+      width:23px;
+      height:23px;
+      bottom:43px;
+      left:15px;
+    }
+
+    .scrubMateSuccessStar.star6{
+      width:17px;
+      height:17px;
+      top:49px;
+      left:18px;
+    }
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateSuccessStar.star1{
+      animation:
+        scrubMateStarAppear
+        .8s
+        .20s
+        ease-out both;
+    }
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateSuccessStar.star2{
+      animation:
+        scrubMateStarAppear
+        .8s
+        .29s
+        ease-out both;
+    }
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateSuccessStar.star3{
+      animation:
+        scrubMateStarAppear
+        .8s
+        .38s
+        ease-out both;
+    }
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateSuccessStar.star4{
+      animation:
+        scrubMateStarAppear
+        .8s
+        .47s
+        ease-out both;
+    }
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateSuccessStar.star5{
+      animation:
+        scrubMateStarAppear
+        .8s
+        .56s
+        ease-out both;
+    }
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateSuccessStar.star6{
+      animation:
+        scrubMateStarAppear
+        .8s
+        .65s
+        ease-out both;
+    }
+
+    /* =========================================
+       TEXT
+    ========================================= */
+
+    .scrubMateBookingSuccessTitle{
+  margin:0;
+  font-size:32px;
+  line-height:1.2;
+  font-weight:900;
+  letter-spacing:-.7px;
+  color:#20242d;
+  opacity:0;
+  transform:translateY(14px);
+}
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateBookingSuccessTitle{
+      animation:
+        scrubMateSuccessTextUp
+        .55s
+        .72s
+        ease-out forwards;
+    }
+
+    .scrubMateBookingSuccessId{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:45px;
+      margin-top:18px;
+      padding:10px 18px;
+      border:1px solid
+        rgba(20,185,187,.18);
+      border-radius:14px;
+      background:
+        rgba(20,185,187,.08);
+      color:#109b9d;
+      font-size:14px;
+      line-height:1.4;
+      font-weight:800;
+      letter-spacing:.1px;
+      opacity:0;
+      transform:translateY(12px);
+    }
+
+    .scrubMateBookingSuccessId[hidden]{
+      display:none;
+    }
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateBookingSuccessId{
+      animation:
+        scrubMateSuccessTextUp
+        .55s
+        .88s
+        ease-out forwards;
+    }
+
+    /* =========================================
+       FULL BOTTOM 5-SECOND TIMER
+    ========================================= */
+
+    .scrubMateBookingSuccessTimer{
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      width:100%;
+      height:6px;
+      overflow:hidden;
+      background:#e7e9ec;
+    }
+
+    .scrubMateBookingSuccessTimerFill{
+      width:100%;
+      height:100%;
+      background:
+        linear-gradient(
+          90deg,
+          #14b9bb,
+          #0d9496
+        );
+      transform-origin:left center;
+      transform:scaleX(1);
+    }
+
+    .scrubMateBookingSuccessPage.show
+    .scrubMateBookingSuccessTimerFill{
+      animation:
+        scrubMateSuccessTimerCountdown
+        5s
+        linear forwards;
+    }
+
+    /* =========================================
+       ANIMATIONS
+    ========================================= */
+
+    @keyframes scrubMateSuccessCirclePop{
+
+      0%{
+        opacity:0;
+        transform:scale(.35);
+      }
+
+      65%{
+        opacity:1;
+        transform:scale(1.12);
+      }
+
+      82%{
+        transform:scale(.96);
+      }
+
+      100%{
+        opacity:1;
+        transform:scale(1);
+      }
+
+    }
+
+    @keyframes scrubMateDrawTick{
+
+      0%{
+        stroke-dashoffset:70;
+      }
+
+      100%{
+        stroke-dashoffset:0;
+      }
+
+    }
+
+    @keyframes scrubMateSuccessGlowPulse{
+
+      0%{
+        opacity:0;
+        transform:scale(.5);
+      }
+
+      45%{
+        opacity:1;
+      }
+
+      100%{
+        opacity:0;
+        transform:scale(1.45);
+      }
+
+    }
+
+    @keyframes scrubMateStarAppear{
+
+      0%{
+        opacity:0;
+        transform:
+          scale(.15)
+          rotate(-40deg);
+      }
+
+      55%{
+        opacity:1;
+        transform:
+          scale(1.35)
+          rotate(20deg);
+      }
+
+      78%{
+        transform:
+          scale(.9)
+          rotate(-8deg);
+      }
+
+      100%{
+        opacity:1;
+        transform:
+          scale(1)
+          rotate(0deg);
+      }
+
+    }
+
+    @keyframes scrubMateSuccessTextUp{
+
+      0%{
+        opacity:0;
+        transform:translateY(14px);
+      }
+
+      100%{
+        opacity:1;
+        transform:translateY(0);
+      }
+
+    }
+
+    @keyframes scrubMateSuccessTimerCountdown{
+
+      from{
+        transform:scaleX(1);
+      }
+
+      to{
+        transform:scaleX(0);
+      }
+
+    }
+  `;
+
+  document.head.appendChild(style);
+
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <section
+        class="scrubMateBookingSuccessPage"
+        id="scrubMateBookingSuccessPage"
+        aria-hidden="true"
+      >
+
+        <div class="scrubMateBookingSuccessContent">
+
+          <div class="scrubMateSuccessAnimation">
+
+            <div class="scrubMateSuccessGlow"></div>
+
+            <span class="scrubMateSuccessStar star1">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 2.5l2.75 5.57 6.15.89-4.45 4.34 1.05 6.13L12 16.54l-5.5 2.89 1.05-6.13L3.1 8.96l6.15-.89L12 2.5z"/>
+              </svg>
+            </span>
+
+            <span class="scrubMateSuccessStar star2">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 2.5l2.75 5.57 6.15.89-4.45 4.34 1.05 6.13L12 16.54l-5.5 2.89 1.05-6.13L3.1 8.96l6.15-.89L12 2.5z"/>
+              </svg>
+            </span>
+
+            <span class="scrubMateSuccessStar star3">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 2.5l2.75 5.57 6.15.89-4.45 4.34 1.05 6.13L12 16.54l-5.5 2.89 1.05-6.13L3.1 8.96l6.15-.89L12 2.5z"/>
+              </svg>
+            </span>
+
+            <span class="scrubMateSuccessStar star4">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 2.5l2.75 5.57 6.15.89-4.45 4.34 1.05 6.13L12 16.54l-5.5 2.89 1.05-6.13L3.1 8.96l6.15-.89L12 2.5z"/>
+              </svg>
+            </span>
+
+            <span class="scrubMateSuccessStar star5">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 2.5l2.75 5.57 6.15.89-4.45 4.34 1.05 6.13L12 16.54l-5.5 2.89 1.05-6.13L3.1 8.96l6.15-.89L12 2.5z"/>
+              </svg>
+            </span>
+
+            <span class="scrubMateSuccessStar star6">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 2.5l2.75 5.57 6.15.89-4.45 4.34 1.05 6.13L12 16.54l-5.5 2.89 1.05-6.13L3.1 8.96l6.15-.89L12 2.5z"/>
+              </svg>
+            </span>
+
+            <div class="scrubMateSuccessCircle">
+
+              <svg
+                class="scrubMateSuccessTickSvg"
+                viewBox="0 0 64 64"
+                aria-hidden="true"
+              >
+                <path
+                  class="scrubMateSuccessTickPath"
+                  d="M15 33 L27 45 L50 20"
+                />
+              </svg>
+
+            </div>
+
+          </div>
+
+          <h2 class="scrubMateBookingSuccessTitle">
+            Booking Received!
+          </h2>
+
+          <div
+            class="scrubMateBookingSuccessId"
+            id="scrubMateBookingSuccessId"
+            hidden
+          ></div>
+
+        </div>
+
+        <div class="scrubMateBookingSuccessTimer">
+          <div
+            class="scrubMateBookingSuccessTimerFill"
+          ></div>
+        </div>
+
+      </section>
+    `
+  );
+}
+
+
+/* =========================================
+   SHOW BOOKING SUCCESS
+========================================= */
+
+function showScrubMateBookingSuccess(order){
+
+  createScrubMateBookingSuccessPage();
+
+  const successPage =
+    document.getElementById(
+      "scrubMateBookingSuccessPage"
+    );
+
+  const successId =
+    document.getElementById(
+      "scrubMateBookingSuccessId"
+    );
+
+  const bookingId =
+    order?.order_id || "";
+
+  if(bookingId){
+
+    successId.hidden = false;
+
+    successId.textContent =
+      `Booking ID: ${bookingId}`;
+
+  }else{
+
+    successId.hidden = true;
+    successId.textContent = "";
+
+  }
+
+  clearTimeout(
+    window.scrubMateSuccessTimer
+  );
+
+  successPage.classList.remove("show");
+
+  /*
+    Restart the circle, tick, stars and
+    bottom timer animations every time.
+  */
+
+  void successPage.offsetWidth;
+
+  successPage.classList.add("show");
+
+  successPage.setAttribute(
+    "aria-hidden",
+    "false"
+  );
+
+  document.body.style.overflow =
+    "hidden";
+
+  window.scrubMateSuccessTimer =
+    setTimeout(function(){
+
+      successPage.classList.remove(
+        "show"
+      );
+
+      successPage.setAttribute(
+        "aria-hidden",
+        "true"
+      );
+
+      document.body.style.overflow = "";
+
+    }, 5000);
+}
+
+
+/* =========================================
+   CASH / UPI CONFIRMATION SHEET
+========================================= */
+
+function createScrubMateBookingSheet(){
+
+  if(
+    document.getElementById(
+      "scrubMateBookingConfirmOverlay"
+    )
+  ){
+    return;
+  }
+
+  const style =
+    document.createElement("style");
+
+  style.id =
+    "scrubMateBookingConfirmStyle";
+
+  style.textContent = `
+    .scrubMateBookingConfirmOverlay{
+      position:fixed;
+      inset:0;
+      z-index:1000000;
+      display:flex;
+      align-items:flex-end;
+      background:rgba(15,23,42,.46);
+      opacity:0;
+      visibility:hidden;
+      transition:
+        opacity .22s ease,
+        visibility .22s ease;
+      font-family:"Manrope",Arial,sans-serif;
+    }
+
+    .scrubMateBookingConfirmOverlay.show{
+      opacity:1;
+      visibility:visible;
+    }
+
+    .scrubMateBookingConfirmSheet{
+      width:100%;
+      max-height:90dvh;
+      padding:
+        12px
+        22px
+        calc(22px + env(safe-area-inset-bottom));
+      background:#ffffff;
+      border-radius:28px 28px 0 0;
+      box-shadow:
+        0 -18px 55px rgba(15,23,42,.18);
+      transform:translateY(105%);
+      transition:
+        transform .32s
+        cubic-bezier(.22,.9,.32,1);
+      overflow-y:auto;
+      overscroll-behavior:contain;
+    }
+
+    .scrubMateBookingConfirmOverlay.show
+    .scrubMateBookingConfirmSheet{
+      transform:translateY(0);
+    }
+
+    .scrubMateBookingHandle{
+      width:44px;
+      height:5px;
+      margin:0 auto 20px;
+      border-radius:50px;
+      background:#d7dce3;
+    }
+
+    .scrubMateBookingTitle{
+      margin:0;
+      font-size:21px;
+      line-height:1.25;
+      font-weight:800;
+      letter-spacing:-.25px;
+      color:#1f2937;
+    }
+
+    .scrubMateBookingSubtitle{
+      margin:7px 0 18px;
+      max-width:360px;
+      font-size:13px;
+      line-height:1.55;
+      font-weight:500;
+      color:#7a8392;
+    }
+
+    .scrubMateBookingDetails{
+      overflow:hidden;
+      border:1px solid #edf0f3;
+      border-radius:18px;
+      background:#ffffff;
+    }
+
+    .scrubMateBookingInfoRow{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      min-height:82px;
+      padding:14px 15px;
+    }
+
+    .scrubMateBookingInfoIcon{
+      flex:0 0 50px;
+      width:50px;
+      height:50px;
+      display:grid;
+      place-items:center;
+      border-radius:15px;
+      background:#effafa;
+      color:#14a9ab;
+      font-size:19px;
+    }
+
+    .scrubMateBookingInfoText{
+      min-width:0;
+      flex:1;
+    }
+
+    .scrubMateBookingAmount{
+      display:block;
+      margin-bottom:3px;
+      font-size:21px;
+      line-height:1.2;
+      font-weight:850;
+      color:#20242d;
+    }
+
+    .scrubMateBookingInfoLabel{
+      display:block;
+      font-size:12px;
+      line-height:1.4;
+      font-weight:600;
+      color:#8a929f;
+    }
+
+    .scrubMateBookingAddressTitle{
+      margin:0 0 4px;
+      font-size:14px;
+      line-height:1.35;
+      font-weight:800;
+      color:#20242d;
+    }
+
+    .scrubMateBookingAddress{
+      display:-webkit-box;
+      margin:0;
+      overflow:hidden;
+      -webkit-box-orient:vertical;
+      -webkit-line-clamp:2;
+      font-size:12.5px;
+      line-height:1.45;
+      font-weight:500;
+      color:#7c8491;
+    }
+
+    .scrubMateBookingDivider{
+      height:1px;
+      margin:0 15px;
+      background:#edf0f3;
+    }
+
+    .scrubMatePlaceBookingButton{
+      position:relative;
+      width:100%;
+      height:56px;
+      margin-top:20px;
+      padding:0 20px;
+      overflow:hidden;
+      border:0;
+      border-radius:16px;
+      background:#14b9bb;
+      color:#ffffff;
+      font-family:inherit;
+      cursor:pointer;
+      box-shadow:
+        0 12px 26px rgba(20,185,187,.23);
+      transform:translateZ(0);
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    .scrubMatePlaceBookingButton::before{
+      content:"";
+      position:absolute;
+      inset:0 auto 0 0;
+      width:0;
+      background:#0d9fa1;
+      z-index:1;
+    }
+
+    .scrubMatePlaceBookingButton.counting::before{
+      animation:
+        scrubMateBookingFill
+        5s
+        linear
+        forwards;
+    }
+
+    .scrubMatePlaceBookingButton span{
+      position:relative;
+      z-index:2;
+      font-size:19px;
+      line-height:1;
+      font-weight:850;
+      letter-spacing:.1px;
+    }
+
+    .scrubMatePlaceBookingButton:active{
+      transform:scale(.985);
+    }
+
+    .scrubMatePlaceBookingButton:disabled{
+      cursor:default;
+    }
+
+    .scrubMateCancelBookingButton{
+      width:100%;
+      margin-top:10px;
+      padding:13px 10px;
+      border:0;
+      background:transparent;
+      color:#14a5a7;
+      font-family:inherit;
+      font-size:14px;
+      line-height:1.2;
+      font-weight:750;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    .scrubMateCancelBookingButton:active{
+      opacity:.65;
+    }
+
+    @keyframes scrubMateBookingFill{
+      from{
+        width:0;
+      }
+
+      to{
+        width:100%;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <section
+        class="scrubMateBookingConfirmOverlay"
+        id="scrubMateBookingConfirmOverlay"
+        aria-hidden="true"
+      >
+        <div class="scrubMateBookingConfirmSheet">
+
+          <div class="scrubMateBookingHandle"></div>
+
+          <h2 class="scrubMateBookingTitle">
+            Confirm Booking
+          </h2>
+
+          <p class="scrubMateBookingSubtitle">
+            Pay using Cash or UPI after the service is completed.
+          </p>
+
+          <div class="scrubMateBookingDetails">
+
+            <div class="scrubMateBookingInfoRow">
+
+              <div class="scrubMateBookingInfoIcon">
+                <i class="fa-solid fa-indian-rupee-sign"></i>
+              </div>
+
+              <div class="scrubMateBookingInfoText">
+
+                <strong
+                  class="scrubMateBookingAmount"
+                  id="scrubMateBookingConfirmTotal"
+                >
+                  ₹0
+                </strong>
+
+                <span class="scrubMateBookingInfoLabel">
+                  Amount to Pay
+                </span>
+
+              </div>
+
+            </div>
+
+            <div class="scrubMateBookingDivider"></div>
+
+            <div class="scrubMateBookingInfoRow">
+
+              <div class="scrubMateBookingInfoIcon">
+                <i class="fa-solid fa-house"></i>
+              </div>
+
+              <div class="scrubMateBookingInfoText">
+
+                <h3 class="scrubMateBookingAddressTitle">
+                  Service Address
+                </h3>
+
+                <p
+                  class="scrubMateBookingAddress"
+                  id="scrubMateBookingConfirmAddress"
+                ></p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <button
+            type="button"
+            class="scrubMatePlaceBookingButton"
+            id="scrubMatePlaceBookingButton"
+          >
+            <span>Book Now</span>
+          </button>
+
+          <button
+            type="button"
+            class="scrubMateCancelBookingButton"
+            id="scrubMateCancelBookingButton"
+          >
+            Cancel
+          </button>
+
+        </div>
+      </section>
+    `
+  );
+
+  document
+    .getElementById(
+      "scrubMateCancelBookingButton"
+    )
+    ?.addEventListener(
+      "click",
+      closeScrubMateBookingSheet
+    );
+
+  document
+    .getElementById(
+      "scrubMateBookingConfirmOverlay"
+    )
+    ?.addEventListener(
+      "click",
+      function(event){
+
+        if(event.target === this){
+          closeScrubMateBookingSheet();
+        }
+
+      }
+    );
+}
+/* =========================================
+   OPEN CASH / UPI SHEET
+========================================= */
+
+function openScrubMateBookingSheet(){
+
+  const user =
+    getScrubMateBookingUser();
+
+  if(!user.mobile || user.mobile.length !== 10){
+    alert("Please login before placing your booking.");
+    return;
+  }
+
+  const bill =
+    getScrubMateBookingSnapshot();
+
+  if(!bill.services.length){
+    return;
+  }
+
+  const location =
+    getScrubMateBookingLocation();
+
+  createScrubMateBookingSheet();
+
+  const overlay =
+    document.getElementById(
+      "scrubMateBookingConfirmOverlay"
+    );
+
+  const button =
+    document.getElementById(
+      "scrubMatePlaceBookingButton"
+    );
+
+  document.getElementById(
+    "scrubMateBookingConfirmTotal"
+  ).textContent = `₹${bill.finalAmount}`;
+
+  document.getElementById(
+    "scrubMateBookingConfirmAddress"
+  ).textContent = location.serviceAddress;
+
+  clearTimeout(scurbBookingTimer);
+  scurbBookingTimer = null;
+
+  button.disabled = false;
+  button.classList.remove("counting");
+  button.querySelector("span").textContent =
+    "Book Now";
+
+  button.onclick = function(){
+    void placeScrubMateCashBooking();
+  };
+
+  requestAnimationFrame(function(){
+    overlay.classList.add("show");
+    overlay.setAttribute("aria-hidden", "false");
+  });
+
+  document.body.style.overflow = "hidden";
+
+  requestAnimationFrame(function(){
+    button.classList.remove("counting");
+    void button.offsetWidth;
+    button.classList.add("counting");
+  });
+
+  /* Automatically place after the 5-second safety period. */
+  scurbBookingTimer = setTimeout(function(){
+
+    if(overlay.classList.contains("show")){
+      void placeScrubMateCashBooking();
+    }
+
+  }, 5000);
+}
+
+
+/* =========================================
+   CLOSE CASH / UPI SHEET
+========================================= */
+
+function closeScrubMateBookingSheet(){
+
+  clearTimeout(scurbBookingTimer);
+  scurbBookingTimer = null;
+
+  const overlay =
+    document.getElementById(
+      "scrubMateBookingConfirmOverlay"
+    );
+
+  const button =
+    document.getElementById(
+      "scrubMatePlaceBookingButton"
+    );
+
+  overlay?.classList.remove("show");
+  overlay?.setAttribute("aria-hidden", "true");
+
+  if(button){
+    button.disabled = false;
+    button.classList.remove("counting");
+    button.querySelector("span").textContent =
+      "Book Now";
+  }
+
+  document.body.style.overflow =
+    scurbCartPage?.classList.contains("show")
+      ? "hidden"
+      : "";
+}
+
+
+/* =========================================
+   PLACE CASH / UPI BOOKING
+========================================= */
+/* =========================================
+   PLACE CASH / UPI BOOKING
+   CLICK INSTANT + AUTO AFTER 5 SECONDS
+========================================= */
+
+async function placeScrubMateCashBooking(){
+
+  if(scurbBookingSaving){
+    return;
+  }
+
+  clearTimeout(scurbBookingTimer);
+  scurbBookingTimer = null;
+
+  const button =
+    document.getElementById(
+      "scrubMatePlaceBookingButton"
+    );
+
+  if(button){
+    button.disabled = true;
+    button.classList.remove("counting");
+    button.querySelector("span").textContent =
+      "Book Now";
+  }
+
+  /*
+    Show success screen immediately.
+    Booking ID will be added after Supabase responds.
+  */
+
+  closeScrubMateBookingSheet();
+
+  showScrubMateBookingSuccess({});
+
+  const result =
+    await saveScrubMateBooking(
+      "cash_or_upi_on_service",
+      "pending"
+    );
+
+  if(!result.success){
+
+    /*
+      Hide instant success screen because
+      saving the booking failed.
+    */
+
+    const successPage =
+      document.getElementById(
+        "scrubMateBookingSuccessPage"
+      );
+
+    successPage?.classList.remove("show");
+
+    successPage?.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+
+    clearTimeout(
+      window.scrubMateSuccessTimer
+    );
+
+    document.body.style.overflow = "";
+
+    alert(result.message);
+
+    if(button){
+      button.disabled = false;
+      button.querySelector("span").textContent =
+        "Book Now";
+    }
+
+    return;
+  }
+
+  /*
+    Add the real Booking ID to the success
+    page when Supabase returns.
+  */
+
+  const successId =
+    document.getElementById(
+      "scrubMateBookingSuccessId"
+    );
+
+  const bookingId =
+    result.order?.order_id || "";
+
+  if(successId && bookingId){
+
+    successId.hidden = false;
+
+    successId.textContent =
+      `Booking ID: ${bookingId}`;
+clearTimeout(
+  window.scrubMateSuccessTimer
+);
+
+window.scrubMateSuccessTimer =
+  setTimeout(function(){
+
+    const successPage =
+      document.getElementById(
+        "scrubMateBookingSuccessPage"
+      );
+
+    successPage?.classList.remove("show");
+
+    successPage?.setAttribute(
+      "aria-hidden",
+      "true"
+    );
+
+    document.body.style.overflow = "";
+
+  }, 5000);
+  }
+
+  clearScrubMateCartAfterBooking();
+}
+
+
+
+/* =========================================
+   ONLINE PAYMENT CENTER LOADER
+   IPHONE-STYLE 12 BAR SPINNER
+========================================= */
+
+function ensureScrubMatePaymentLoader(){
+
+  if(
+    document.getElementById(
+      "scrubMatePaymentLoaderStyle"
+    )
+  ){
+    return;
+  }
+
+  const style =
+    document.createElement("style");
+
+  style.id =
+    "scrubMatePaymentLoaderStyle";
+
+  style.textContent = `
+    .scrubMatePaymentLoader{
+      position:fixed;
+      inset:0;
+      z-index:2147483646;
+
+      display:none;
+      align-items:center;
+      justify-content:center;
+
+      background:rgba(255,255,255,.18);
+      backdrop-filter:blur(2px);
+      -webkit-backdrop-filter:blur(2px);
+    }
+
+    .scrubMatePaymentLoader.show{
+      display:flex;
+    }
+
+    .scrubMateIOSSpinner{
+      position:relative;
+
+      width:38px;
+      height:38px;
+    }
+
+    .scrubMateIOSSpinner span{
+      position:absolute;
+
+      left:17px;
+      top:2px;
+
+      width:4px;
+      height:10px;
+
+      border-radius:5px;
+
+      background:#30343a;
+
+      transform-origin:2px 17px;
+
+      animation:
+        scrubMateIOSSpinnerFade
+        1.2s
+        linear
+        infinite;
+    }
+
+    .scrubMateIOSSpinner span:nth-child(1){
+      transform:rotate(0deg);
+      animation-delay:-1.1s;
+    }
+
+    .scrubMateIOSSpinner span:nth-child(2){
+      transform:rotate(30deg);
+      animation-delay:-1s;
+    }
+
+    .scrubMateIOSSpinner span:nth-child(3){
+      transform:rotate(60deg);
+      animation-delay:-.9s;
+    }
+
+    .scrubMateIOSSpinner span:nth-child(4){
+      transform:rotate(90deg);
+      animation-delay:-.8s;
+    }
+
+    .scrubMateIOSSpinner span:nth-child(5){
+      transform:rotate(120deg);
+      animation-delay:-.7s;
+    }
+
+    .scrubMateIOSSpinner span:nth-child(6){
+      transform:rotate(150deg);
+      animation-delay:-.6s;
+    }
+
+    .scrubMateIOSSpinner span:nth-child(7){
+      transform:rotate(180deg);
+      animation-delay:-.5s;
+    }
+
+    .scrubMateIOSSpinner span:nth-child(8){
+      transform:rotate(210deg);
+      animation-delay:-.4s;
+    }
+
+    .scrubMateIOSSpinner span:nth-child(9){
+      transform:rotate(240deg);
+      animation-delay:-.3s;
+    }
+
+    .scrubMateIOSSpinner span:nth-child(10){
+      transform:rotate(270deg);
+      animation-delay:-.2s;
+    }
+
+    .scrubMateIOSSpinner span:nth-child(11){
+      transform:rotate(300deg);
+      animation-delay:-.1s;
+    }
+
+    .scrubMateIOSSpinner span:nth-child(12){
+      transform:rotate(330deg);
+      animation-delay:0s;
+    }
+
+    @keyframes scrubMateIOSSpinnerFade{
+      0%{
+        opacity:1;
+      }
+
+      100%{
+        opacity:.12;
+      }
+    }
+
+`;
+
+  document.head.appendChild(style);
+
+
+  const loader =
+    document.createElement("div");
+
+  loader.id =
+    "scrubMatePaymentLoader";
+
+  loader.className =
+    "scrubMatePaymentLoader";
+
+  loader.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+
+  loader.innerHTML = `
+    <div
+      class="scrubMateIOSSpinner"
+      role="status"
+      aria-label="Loading"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  `;
+
+  document.body.appendChild(loader);
+}
+
+
+function showScrubMatePaymentLoader(){
+
+  ensureScrubMatePaymentLoader();
+
+  const loader =
+    document.getElementById(
+      "scrubMatePaymentLoader"
+    );
+
+  loader?.classList.add("show");
+
+  loader?.setAttribute(
+    "aria-hidden",
+    "false"
+  );
+}
+
+
+function hideScrubMatePaymentLoader(){
+
+  const loader =
+    document.getElementById(
+      "scrubMatePaymentLoader"
+    );
+
+  loader?.classList.remove("show");
+
+  loader?.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+}
+
+
+function restoreScrubMatePaymentPage(){
+
+  hideScrubMatePaymentLoader();
+
+  scurbBookingSaving = false;
+
+  if(scurbCartPayOnlineButton){
+
+    scurbCartPayOnlineButton.disabled =
+      false;
+
+  }
+
+  /*
+     Keep cart scrolling locked only while
+     the cart page is still open.
+  */
+
+  document.body.style.overflow =
+    scurbCartPage?.classList.contains("show")
+      ? "hidden"
+      : "";
+}
+
+
+/*
+   Razorpay can return control through browser
+   back, app resume, tab restore or modal close.
+   Always remove the loader and restore clicks.
+*/
+
+window.addEventListener(
+  "pageshow",
+  restoreScrubMatePaymentPage
+);
+
+window.addEventListener(
+  "focus",
+  function(){
+
+    setTimeout(
+      restoreScrubMatePaymentPage,
+      150
+    );
+
+  }
+);
+
+document.addEventListener(
+  "visibilitychange",
+  function(){
+
+    if(!document.hidden){
+
+      setTimeout(
+        restoreScrubMatePaymentPage,
+        150
+      );
+
+    }
+
+  }
+);
+
+
+
+/* =========================================
+   LOAD RAZORPAY CHECKOUT
+========================================= */
+
+function loadScrubMateRazorpay(){
+
+  return new Promise(function(resolve, reject){
+
+    if(window.Razorpay){
+      resolve();
+      return;
+    }
+
+    const existingScript =
+      document.querySelector(
+        'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
+      );
+
+    if(existingScript){
+      existingScript.addEventListener("load", resolve, {once:true});
+      existingScript.addEventListener("error", reject, {once:true});
+      return;
+    }
+
+    const script =
+      document.createElement("script");
+
+    script.src =
+      "https://checkout.razorpay.com/v1/checkout.js";
+
+    script.onload = resolve;
+    script.onerror = reject;
+
+    document.head.appendChild(script);
+  });
+}
+
+
+/* =========================================
+   PAY ONLINE WITH RAZORPAY
+========================================= */
+
+async function openScrubMateOnlinePayment(){
+
+  if(scurbBookingSaving){
+    return;
+  }
+
+  const user =
+    getScrubMateBookingUser();
+
+  if(!user.mobile || user.mobile.length !== 10){
+
+    alert(
+      "Please login before making payment."
+    );
+
+    return;
+  }
+
+  const bill =
+    getScrubMateBookingSnapshot();
+
+  if(
+    !bill.services.length ||
+    bill.finalAmount <= 0
+  ){
+
+    alert("Invalid booking amount.");
+
+    return;
+  }
+
+  scurbBookingSaving = true;
+
+  if(scurbCartPayOnlineButton){
+
+    scurbCartPayOnlineButton.disabled =
+      true;
+
+  }
+
+  showScrubMatePaymentLoader();
+
+  try{
+
+    await loadScrubMateRazorpay();
+
+    const response = await fetch(
+      "https://razropay.onrender.com/create-order",
+      {
+        method:"POST",
+
+        headers:{
+          "Content-Type":"application/json"
+        },
+
+        body:JSON.stringify({
+          amount:
+            Math.round(
+              bill.finalAmount * 100
+            )
+        })
+      }
+    );
+
+    const data =
+      await response.json();
+
+    if(
+      !response.ok ||
+      !data?.success ||
+      !data?.order
+    ){
+
+      throw new Error(
+        data?.message ||
+        "Unable to create online payment."
+      );
+    }
+
+    /*
+       The Razorpay window is ready.
+       Remove our loader before checkout opens.
+    */
+
+    hideScrubMatePaymentLoader();
+
+    const options = {
+
+      key:"rzp_live_SqrUSaPO5pA6gt",
+
+      amount:data.order.amount,
+
+      currency:
+        data.order.currency || "INR",
+
+      order_id:data.order.id,
+
+      name:"Scrub Mate",
+
+      description:
+        "Cleaning service booking",
+
+      prefill:{
+        name:user.name,
+        email:user.email || "",
+        contact:user.mobile
+      },
+
+      theme:{
+        color:"#14b9bb"
+      },
+
+      handler:async function(
+        paymentResponse
+      ){
+
+        showScrubMatePaymentLoader();
+
+        try{
+
+          const result =
+            await saveScrubMateBooking(
+              "razorpay",
+              "paid",
+              paymentResponse
+            );
+
+          if(!result.success){
+
+            alert(
+              "Payment succeeded, but booking could not be saved. Please contact support with payment ID: " +
+              (
+                paymentResponse
+                  .razorpay_payment_id ||
+                ""
+              )
+            );
+
+            return;
+          }
+
+          clearScrubMateCartAfterBooking();
+
+          showScrubMateBookingSuccess(
+            result.order
+          );
+
+        }finally{
+
+          restoreScrubMatePaymentPage();
+
+        }
+
+      },
+
+      modal:{
+
+        ondismiss:function(){
+
+          /*
+             User pressed back or closed Razorpay.
+             Do not leave an invisible layer or
+             disabled button over the cart.
+          */
+
+          restoreScrubMatePaymentPage();
+
+        },
+
+        escape:true,
+
+        backdropclose:false
+
+      }
+
+    };
+
+    const checkout =
+      new window.Razorpay(options);
+
+    checkout.on(
+      "payment.failed",
+      function(response){
+
+        restoreScrubMatePaymentPage();
+
+        alert(
+          response?.error?.description ||
+          "Payment failed. Please try again."
+        );
+
+      }
+    );
+
+    checkout.open();
+
+    /*
+       Some WebViews return immediately from
+       checkout.open(). Keep the page restored.
+    */
+
+    setTimeout(
+      hideScrubMatePaymentLoader,
+      100
+    );
+
+  }catch(error){
+
+    console.error(
+      "Scrub Mate online payment failed:",
+      error
+    );
+
+    restoreScrubMatePaymentPage();
+
+    alert(
+      error?.message ||
+      "Unable to open payment. Please try again."
+    );
+
+  }
+}
+
+
+/* =========================================
+   PAYMENT BUTTON EVENTS
+========================================= */
+
+scurbCartCashButton?.addEventListener(
+  "click",
+  openScrubMateBookingSheet
+);
+
+scurbCartPayOnlineButton?.addEventListener(
+  "click",
+  function(){
+    void openScrubMateOnlinePayment();
+  }
+);
