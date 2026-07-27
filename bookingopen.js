@@ -1354,7 +1354,7 @@ function updateScurbOrderTrackingStatus(
       "Waiting for a professional cleaner";
 
     scurbOrderStatusDescription.textContent =
-      "We are finding an available professional cleaner near your location.";
+      "Finding an available professional cleaner";
 
     scurbOrderCleanerCard.hidden =
       true;
