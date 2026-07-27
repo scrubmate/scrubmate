@@ -310,6 +310,13 @@ function createScurbBookingCard(booking){
 
   card.className =
     "scurb-booking-card";
+
+  card.dataset.bookingId =
+    String(
+      booking.id ||
+      booking.order_id ||
+      ""
+    );
 card.setAttribute(
   "role",
   "button"
@@ -3164,85 +3171,425 @@ async function cancelScurbCurrentBooking(){
 }
 
 /* =========================================
-   SUPABASE REALTIME BOOKINGS
+   SUPABASE REALTIME BOOKINGS — NO REFRESH
 ========================================= */
 
-function scheduleScurbRealtimeRefresh(){
+function getScurbRealtimeBookingKey(booking){
 
-  clearTimeout(
-    scurbRealtimeRefreshTimer
+  return String(
+    booking?.id ||
+    booking?.order_id ||
+    ""
   );
-
-  scurbRealtimeRefreshTimer =
-    setTimeout(
-      async function(){
-
-        const mobile =
-          getScurbLoggedInMobile();
-
-        if(mobile.length !== 10){
-          return;
-        }
-
-        const openBookingId =
-          scurbCurrentTrackingBooking?.id ||
-          null;
-
-        await loadScurbBookings();
-
-        if(
-          openBookingId &&
-          scurbOrderTrackingPage?.classList.contains(
-            "show"
-          )
-        ){
-
-          const refreshedBooking =
-            scurbAllBookings.find(
-              function(item){
-                return item.id === openBookingId;
-              }
-            );
-
-          if(refreshedBooking){
-
-            scurbCurrentTrackingBooking =
-              refreshedBooking;
-
-            updateScurbCancelButton(
-              refreshedBooking
-            );
-
-            updateScurbOrderTrackingStatus(
-              refreshedBooking
-            );
-
-            renderScurbOrderTrackingServices(
-              refreshedBooking
-            );
-
-            renderScurbBookedLocationMap(
-              refreshedBooking
-            );
-
-          }
-
-        }
-
-      },
-      180
-    );
 
 }
 
+
+function bookingBelongsToScurbUser(booking){
+
+  const loggedMobile =
+    getScurbLoggedInMobile();
+
+  const bookingMobile =
+    String(
+      booking?.customer_mobile ||
+      ""
+    )
+      .replace(/\D/g, "")
+      .slice(-10);
+
+  return (
+    loggedMobile.length === 10 &&
+    bookingMobile === loggedMobile
+  );
+
+}
+
+
+/*
+  Replace only one booking card instead of
+  rebuilding the whole list. This avoids
+  flashing or blinking on realtime updates.
+*/
+
+function updateScurbBookingCardWithoutBlink(
+  booking
+){
+
+  const bookingKey =
+    getScurbRealtimeBookingKey(
+      booking
+    );
+
+  if(!bookingKey){
+    return;
+  }
+
+
+  const existingIndex =
+    scurbAllBookings.findIndex(
+      function(item){
+
+        return (
+          getScurbRealtimeBookingKey(item) ===
+          bookingKey
+        );
+
+      }
+    );
+
+
+  if(existingIndex === -1){
+
+    scurbAllBookings.unshift(
+      booking
+    );
+
+  }else{
+
+    scurbAllBookings[
+      existingIndex
+    ] = {
+      ...scurbAllBookings[
+        existingIndex
+      ],
+      ...booking
+    };
+
+    booking =
+      scurbAllBookings[
+        existingIndex
+      ];
+
+  }
+
+
+  const shouldBePast =
+    isScurbPastBooking(
+      booking
+    );
+
+  const visibleInCurrentTab =
+    scurbActiveBookingTab === "past"
+      ? shouldBePast
+      : !shouldBePast;
+
+
+  const existingCard =
+    scurbBookingsList?.querySelector(
+      `[data-booking-id="${CSS.escape(
+        bookingKey
+      )}"]`
+    );
+
+
+  /*
+    The status moved between Upcoming/Past.
+    Remove it smoothly from the current tab.
+  */
+
+  if(!visibleInCurrentTab){
+
+    if(existingCard){
+
+      existingCard.style.transition =
+        "opacity .18s ease, transform .18s ease";
+
+      existingCard.style.opacity =
+        "0";
+
+      existingCard.style.transform =
+        "translateY(-5px)";
+
+      setTimeout(
+        function(){
+
+          existingCard.remove();
+
+          if(
+            scurbBookingsList &&
+            !scurbBookingsList.children.length
+          ){
+            showScurbBookingsEmpty();
+          }
+
+        },
+        180
+      );
+
+    }
+
+    return;
+
+  }
+
+
+  scurbBookingsEmpty?.classList.add(
+    "hide"
+  );
+
+
+  const newCard =
+    createScurbBookingCard(
+      booking
+    );
+
+
+  /*
+    Replace only this card. No complete list
+    rerender and no screen blinking.
+  */
+
+  if(existingCard){
+
+    existingCard.replaceWith(
+      newCard
+    );
+
+  }else if(scurbBookingsList){
+
+    scurbBookingsList.prepend(
+      newCard
+    );
+
+  }
+
+}
+
+
+/*
+  Update the currently opened tracking page
+  directly from the realtime payload.
+*/
+
+function updateOpenScurbTrackingWithoutBlink(
+  booking,
+  previousBooking = null
+){
+
+  if(
+    !scurbOrderTrackingPage?.classList.contains(
+      "show"
+    ) ||
+    !scurbCurrentTrackingBooking
+  ){
+    return;
+  }
+
+
+  const openBookingKey =
+    getScurbRealtimeBookingKey(
+      scurbCurrentTrackingBooking
+    );
+
+  const changedBookingKey =
+    getScurbRealtimeBookingKey(
+      booking
+    );
+
+
+  if(
+    !openBookingKey ||
+    openBookingKey !==
+      changedBookingKey
+  ){
+    return;
+  }
+
+
+  scurbCurrentTrackingBooking = {
+    ...scurbCurrentTrackingBooking,
+    ...booking
+  };
+
+
+  const updatedBooking =
+    scurbCurrentTrackingBooking;
+
+
+  updateScurbCancelButton(
+    updatedBooking
+  );
+
+  updateScurbOrderTrackingStatus(
+    updatedBooking
+  );
+
+
+  /*
+    Update cleaner phone immediately.
+    showScurbAcceptedCleaner() is called by
+    the status renderer when required.
+  */
+
+  const servicesChanged =
+    JSON.stringify(
+      previousBooking?.services ?? null
+    ) !==
+    JSON.stringify(
+      updatedBooking.services ?? null
+    );
+
+  if(servicesChanged){
+
+    renderScurbOrderTrackingServices(
+      updatedBooking
+    );
+
+  }
+
+
+  /*
+    Redraw the map only when coordinates have
+    changed. Status-only updates do not make
+    the map blink.
+  */
+
+  const locationChanged =
+    Number(previousBooking?.latitude) !==
+      Number(updatedBooking.latitude) ||
+    Number(previousBooking?.longitude) !==
+      Number(updatedBooking.longitude) ||
+    Number(previousBooking?.cleaner_latitude) !==
+      Number(updatedBooking.cleaner_latitude) ||
+    Number(previousBooking?.cleaner_longitude) !==
+      Number(updatedBooking.cleaner_longitude);
+
+  if(locationChanged){
+
+    renderScurbBookedLocationMap(
+      updatedBooking
+    );
+
+  }
+
+}
+
+
+/* =========================================
+   APPLY REALTIME INSERT / UPDATE / DELETE
+========================================= */
+
+function applyScurbRealtimeBookingChange(
+  payload
+){
+
+  const eventType =
+    String(
+      payload?.eventType ||
+      ""
+    ).toUpperCase();
+
+  const newBooking =
+    payload?.new || null;
+
+  const oldBooking =
+    payload?.old || null;
+
+
+  if(eventType === "DELETE"){
+
+    const deletedKey =
+      getScurbRealtimeBookingKey(
+        oldBooking
+      );
+
+    if(!deletedKey){
+      return;
+    }
+
+
+    scurbAllBookings =
+      scurbAllBookings.filter(
+        function(item){
+
+          return (
+            getScurbRealtimeBookingKey(item) !==
+            deletedKey
+          );
+
+        }
+      );
+
+
+    scurbBookingsList
+      ?.querySelector(
+        `[data-booking-id="${CSS.escape(
+          deletedKey
+        )}"]`
+      )
+      ?.remove();
+
+
+    if(
+      getScurbRealtimeBookingKey(
+        scurbCurrentTrackingBooking
+      ) === deletedKey
+    ){
+
+      closeScurbOrderTracking();
+
+    }
+
+    return;
+
+  }
+
+
+  if(
+    !newBooking ||
+    !bookingBelongsToScurbUser(
+      newBooking
+    )
+  ){
+    return;
+  }
+
+
+  const bookingKey =
+    getScurbRealtimeBookingKey(
+      newBooking
+    );
+
+  const previousBooking =
+    scurbAllBookings.find(
+      function(item){
+
+        return (
+          getScurbRealtimeBookingKey(item) ===
+          bookingKey
+        );
+
+      }
+    ) || null;
+
+
+  updateScurbBookingCardWithoutBlink(
+    newBooking
+  );
+
+  updateOpenScurbTrackingWithoutBlink(
+    newBooking,
+    previousBooking
+  );
+
+}
+
+
+/* =========================================
+   CONNECT REALTIME
+========================================= */
 
 function setupScurbBookingsRealtime(){
 
   const client =
     window.supabaseClient ||
-    (typeof supabaseClient !== "undefined"
-      ? supabaseClient
-      : null);
+    (
+      typeof supabaseClient !==
+      "undefined"
+        ? supabaseClient
+        : null
+    );
 
   if(
     !client ||
@@ -3251,10 +3598,19 @@ function setupScurbBookingsRealtime(){
     return;
   }
 
+
+  const mobile =
+    getScurbLoggedInMobile();
+
+  if(mobile.length !== 10){
+    return;
+  }
+
+
   scurbBookingsRealtimeChannel =
     client
       .channel(
-        "scrubmate-customer-bookings-live"
+        `scrubmate-customer-orders-${mobile}`
       )
       .on(
         "postgres_changes",
@@ -3263,42 +3619,27 @@ function setupScurbBookingsRealtime(){
           schema:"public",
           table:"scrubmate_orders"
         },
-        function(payload){
-
-          const mobile =
-            getScurbLoggedInMobile();
-
-          if(mobile.length !== 10){
-            return;
-          }
-
-          const changedMobile =
-            String(
-              payload?.new?.customer_mobile ||
-              payload?.old?.customer_mobile ||
-              ""
-            )
-              .replace(/\D/g, "")
-              .slice(-10);
-
-          if(
-            changedMobile &&
-            changedMobile !== mobile
-          ){
-            return;
-          }
-
-          scheduleScurbRealtimeRefresh();
-
-        }
+        applyScurbRealtimeBookingChange
       )
       .subscribe(
         function(status){
 
           if(status === "SUBSCRIBED"){
+
             console.log(
-              "Scrub Mate bookings realtime connected"
+              "Scrub Mate realtime connected"
             );
+
+          }else if(
+            status === "CHANNEL_ERROR" ||
+            status === "TIMED_OUT"
+          ){
+
+            console.warn(
+              "Scrub Mate realtime connection:",
+              status
+            );
+
           }
 
         }
@@ -3307,6 +3648,26 @@ function setupScurbBookingsRealtime(){
 }
 
 
-setupScurbBookingsRealtime();
+/*
+  Connect after the page and Supabase client
+  are ready. It does not refresh the page.
+*/
+
+if(document.readyState === "loading"){
+
+  document.addEventListener(
+    "DOMContentLoaded",
+    setupScurbBookingsRealtime,
+    {
+      once:true
+    }
+  );
+
+}else{
+
+  setupScurbBookingsRealtime();
+
+}
+
 
 })();
