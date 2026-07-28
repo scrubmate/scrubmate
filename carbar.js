@@ -3541,7 +3541,7 @@ function getScrubMatePlatform(){
 
 
 /* =========================================
-   GET LOGGED-IN USER PUSH TOKEN
+   GET ORDER PUSH TOKEN
 ========================================= */
 
 function getScrubMateOrderPushToken(){
@@ -3568,87 +3568,108 @@ function getScrubMateOrderPushToken(){
   }
 
 
-  const isLoggedIn =
-    localStorage.getItem(
-      "scrubMateLoggedIn"
-    ) === "true";
-
-  const isGuest =
-    localStorage.getItem(
-      "scrubMateGuestMode"
-    ) === "true";
-
-
-  const validLoggedInUser =
-    isLoggedIn &&
-    !isGuest &&
-    user &&
-    user.login === true &&
-    user.verified === true;
-
-
-  if(!validLoggedInUser){
-
-    return {
-      deviceToken:null,
-      devicePlatform:null,
-      deviceTokenType:null,
-      deviceTokenUpdatedAt:null
-    };
-  }
-
+  /*
+   The order itself already requires a valid logged-in
+   mobile number, so do not reject a real native token
+   only because one older login flag is missing.
+  */
 
   const deviceToken =
     String(
-      user.deviceToken ||
+      user?.deviceToken ||
+      user?.device_token ||
+
       localStorage.getItem(
         "scrubMateDeviceToken"
       ) ||
-      ""
-    ).trim();
 
+      localStorage.getItem(
+        "scrubMateAPNsDeviceToken"
+      ) ||
+
+      localStorage.getItem(
+        "scrubMatePushToken"
+      ) ||
+
+      ""
+    )
+      .trim();
+
+
+  /*
+   Support both platform key names used by the Swift
+   bridge and by the website login code.
+  */
 
   const devicePlatform =
     String(
-      user.devicePlatform ||
+      user?.devicePlatform ||
+      user?.device_platform ||
+
       localStorage.getItem(
         "scrubMateDevicePlatform"
       ) ||
-      getScrubMatePlatform()
-    ).trim();
+
+      localStorage.getItem(
+        "scrubMateDeviceTokenPlatform"
+      ) ||
+
+      (
+        deviceToken
+          ? "ios"
+          : getScrubMatePlatform()
+      )
+    )
+      .trim()
+      .toLowerCase();
 
 
   const deviceTokenType =
     String(
-      user.deviceTokenType ||
+      user?.deviceTokenType ||
+      user?.device_token_type ||
+
       localStorage.getItem(
         "scrubMateDeviceTokenType"
       ) ||
+
       (
+        deviceToken &&
         devicePlatform === "ios"
           ? "apns"
           : ""
       )
-    ).trim();
+    )
+      .trim()
+      .toLowerCase();
 
 
   const deviceTokenUpdatedAt =
-    user.deviceTokenUpdatedAt ||
-    null;
+    user?.deviceTokenUpdatedAt ||
+    user?.device_token_updated_at ||
+    localStorage.getItem(
+      "scrubMateDeviceTokenUpdatedAt"
+    ) ||
+    (
+      deviceToken
+        ? new Date().toISOString()
+        : null
+    );
 
 
   return {
+
     deviceToken:
       deviceToken || null,
 
     devicePlatform:
       deviceToken
-        ? devicePlatform || null
+        ? devicePlatform || "ios"
         : null,
 
     deviceTokenType:
       deviceToken
-        ? deviceTokenType || null
+        ? deviceTokenType || "apns"
         : null,
 
     deviceTokenUpdatedAt:
@@ -3660,13 +3681,94 @@ function getScrubMateOrderPushToken(){
 
 
 /* =========================================
+   WAIT FOR NATIVE TOKEN BEFORE ORDER
+========================================= */
+
+async function waitForScrubMateOrderPushToken(
+  timeoutMs = 3500
+){
+
+  if(
+    typeof window
+      .syncScrubMateDeviceTokenAfterLogin ===
+      "function"
+  ){
+
+    try{
+
+      window
+        .syncScrubMateDeviceTokenAfterLogin();
+
+    }catch(error){
+
+      console.warn(
+        "Unable to sync native token before order:",
+        error
+      );
+    }
+  }
+
+
+  const startedAt =
+    Date.now();
+
+
+  while(
+    Date.now() - startedAt <
+    timeoutMs
+  ){
+
+    const tokenData =
+      getScrubMateOrderPushToken();
+
+    if(tokenData.deviceToken){
+
+      console.log(
+        "APNs token ready for order:",
+        tokenData.deviceToken
+      );
+
+      return tokenData;
+    }
+
+
+    await new Promise(function(resolve){
+
+      window.setTimeout(
+        resolve,
+        150
+      );
+
+    });
+  }
+
+
+  const finalTokenData =
+    getScrubMateOrderPushToken();
+
+
+  if(!finalTokenData.deviceToken){
+
+    console.warn(
+      "Order is being placed without an APNs token. " +
+      "Check the Xcode console for the native token."
+    );
+  }
+
+
+  return finalTokenData;
+}
+
+
+/* =========================================
    BUILD DATABASE ROW
 ========================================= */
 
 function buildScrubMateOrderRow(
   paymentMethod,
   paymentStatus,
-  razorpayDetails = {}
+  razorpayDetails = {},
+  resolvedPushToken = null
 ){
 
   const user =
@@ -3679,6 +3781,7 @@ function buildScrubMateOrderRow(
     getScrubMateBookingSnapshot();
 
   const pushToken =
+    resolvedPushToken ||
     getScrubMateOrderPushToken();
 
   const couponApplied =
@@ -3795,7 +3898,21 @@ function buildScrubMateOrderRow(
 
     metadata:{
       source:"scrubmate_cart",
-      booked_at:new Date().toISOString()
+      booked_at:new Date().toISOString(),
+
+      push_notification:{
+        device_token:
+          pushToken.deviceToken,
+
+        device_platform:
+          pushToken.devicePlatform,
+
+        device_token_type:
+          pushToken.deviceTokenType,
+
+        device_token_updated_at:
+          pushToken.deviceTokenUpdatedAt
+      }
     }
   };
 }
@@ -3845,12 +3962,41 @@ async function saveScrubMateBooking(
     const client =
       getScrubMateSupabaseClient();
 
+    /*
+     Give Swift a short time to deliver the real APNs
+     token before creating the database row.
+    */
+
+    const orderPushToken =
+      await waitForScrubMateOrderPushToken(
+        3500
+      );
+
+
     const orderRow =
       buildScrubMateOrderRow(
         paymentMethod,
         paymentStatus,
-        razorpayDetails
+        razorpayDetails,
+        orderPushToken
       );
+
+
+    console.log(
+      "Order push-token payload:",
+      {
+        hasToken:
+          Boolean(
+            orderRow.device_token
+          ),
+
+        platform:
+          orderRow.device_platform,
+
+        tokenType:
+          orderRow.device_token_type
+      }
+    );
 
     const result =
       await client
