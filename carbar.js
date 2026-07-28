@@ -170,6 +170,293 @@ let scurbServiceCart = [];
 
 
 /* =========================================
+   NATIVE PUSH TOKEN BRIDGE FOR ORDERS
+========================================= */
+
+/*
+ Keep a runtime copy inside this order file.
+
+ This prevents the order from missing the token when:
+ - Swift sends it before the profile file is ready;
+ - another JavaScript file replaces the callback;
+ - localStorage has not yet been synchronized;
+ - the order is placed immediately after login.
+*/
+
+let scrubMateOrderNativePushToken = null;
+
+
+/* Normalize and cache the native payload */
+
+function cacheScrubMateNativeTokenForOrder(
+  tokenPayload
+){
+
+  if(
+    !tokenPayload ||
+    !tokenPayload.token
+  ){
+    return false;
+  }
+
+
+  const cleanToken =
+    String(tokenPayload.token)
+      .trim();
+
+  if(!cleanToken){
+    return false;
+  }
+
+
+  const cleanPlatform =
+    String(
+      tokenPayload.platform || "ios"
+    )
+      .trim()
+      .toLowerCase();
+
+
+  const cleanTokenType =
+    String(
+      tokenPayload.tokenType ||
+      tokenPayload.token_type ||
+      (
+        cleanPlatform === "ios"
+          ? "apns"
+          : "fcm"
+      )
+    )
+      .trim()
+      .toLowerCase();
+
+
+  const updatedAt =
+    new Date().toISOString();
+
+
+  scrubMateOrderNativePushToken = {
+    token:cleanToken,
+    platform:cleanPlatform,
+    tokenType:cleanTokenType,
+    updatedAt:updatedAt
+  };
+
+
+  /*
+   Store every key variant used by your current
+   Swift, profile and order JavaScript files.
+  */
+
+  localStorage.setItem(
+    "scrubMateDeviceToken",
+    cleanToken
+  );
+
+  localStorage.setItem(
+    "scrubMateDevicePlatform",
+    cleanPlatform
+  );
+
+  localStorage.setItem(
+    "scrubMateDeviceTokenPlatform",
+    cleanPlatform
+  );
+
+  localStorage.setItem(
+    "scrubMateDeviceTokenType",
+    cleanTokenType
+  );
+
+  localStorage.setItem(
+    "scrubMateDeviceTokenUpdatedAt",
+    updatedAt
+  );
+
+
+  /*
+   Also attach it to the existing login object.
+   Do not create a fake user when no user exists.
+  */
+
+  try{
+
+    const savedUser =
+      JSON.parse(
+        localStorage.getItem(
+          "scrubMateUser"
+        ) || "null"
+      );
+
+    if(savedUser){
+
+      savedUser.deviceToken =
+        cleanToken;
+
+      savedUser.devicePlatform =
+        cleanPlatform;
+
+      savedUser.deviceTokenType =
+        cleanTokenType;
+
+      savedUser.deviceTokenUpdatedAt =
+        updatedAt;
+
+
+      localStorage.setItem(
+        "scrubMateUser",
+        JSON.stringify(savedUser)
+      );
+    }
+
+  }catch(error){
+
+    console.warn(
+      "Unable to attach token to user object:",
+      error
+    );
+  }
+
+
+  console.log(
+    "Native token received by order JavaScript:",
+    {
+      hasToken:true,
+      platform:cleanPlatform,
+      tokenType:cleanTokenType,
+      tokenLength:cleanToken.length
+    }
+  );
+
+
+  window.dispatchEvent(
+    new CustomEvent(
+      "scrubMateOrderPushTokenReady",
+      {
+        detail:
+          scrubMateOrderNativePushToken
+      }
+    )
+  );
+
+
+  return true;
+}
+
+
+/*
+ Preserve an existing callback from the profile file,
+ then add the order callback as well.
+*/
+
+const previousScrubMateTokenCallback =
+  typeof window
+    .onScrubMateDeviceTokenReceived ===
+    "function"
+    ? window
+        .onScrubMateDeviceTokenReceived
+    : null;
+
+
+window.onScrubMateDeviceTokenReceived =
+  function(tokenPayload){
+
+    cacheScrubMateNativeTokenForOrder(
+      tokenPayload
+    );
+
+
+    if(
+      previousScrubMateTokenCallback &&
+      previousScrubMateTokenCallback !==
+        window.onScrubMateDeviceTokenReceived
+    ){
+
+      try{
+
+        previousScrubMateTokenCallback(
+          tokenPayload
+        );
+
+      }catch(error){
+
+        console.warn(
+          "Previous token callback failed:",
+          error
+        );
+      }
+    }
+  };
+
+
+/*
+ Swift dispatches this event in addition to calling
+ window.onScrubMateDeviceTokenReceived().
+*/
+
+window.addEventListener(
+  "scrubMateDeviceTokenReceived",
+  function(event){
+
+    if(event?.detail){
+
+      cacheScrubMateNativeTokenForOrder(
+        event.detail
+      );
+    }
+  }
+);
+
+
+/*
+ Recover the token immediately when Swift already saved
+ it before this order file loaded.
+*/
+
+(function restoreScrubMateOrderToken(){
+
+  const existingToken =
+    localStorage.getItem(
+      "scrubMateDeviceToken"
+    ) ||
+    localStorage.getItem(
+      "scrubMateAPNsDeviceToken"
+    ) ||
+    localStorage.getItem(
+      "scrubMatePushToken"
+    ) ||
+    "";
+
+
+  if(!existingToken){
+    return;
+  }
+
+
+  cacheScrubMateNativeTokenForOrder({
+    token:existingToken,
+
+    platform:
+      localStorage.getItem(
+        "scrubMateDevicePlatform"
+      ) ||
+      localStorage.getItem(
+        "scrubMateDeviceTokenPlatform"
+      ) ||
+      "ios",
+
+    tokenType:
+      localStorage.getItem(
+        "scrubMateDeviceTokenType"
+      ) ||
+      "apns"
+  });
+
+})();
+
+
+
+/* =========================================
    CONVERT PRICE TEXT TO NUMBER
 ========================================= */
 
@@ -3576,6 +3863,8 @@ function getScrubMateOrderPushToken(){
 
   const deviceToken =
     String(
+      scrubMateOrderNativePushToken?.token ||
+
       user?.deviceToken ||
       user?.device_token ||
 
@@ -3603,6 +3892,8 @@ function getScrubMateOrderPushToken(){
 
   const devicePlatform =
     String(
+      scrubMateOrderNativePushToken?.platform ||
+
       user?.devicePlatform ||
       user?.device_platform ||
 
@@ -3626,6 +3917,8 @@ function getScrubMateOrderPushToken(){
 
   const deviceTokenType =
     String(
+      scrubMateOrderNativePushToken?.tokenType ||
+
       user?.deviceTokenType ||
       user?.device_token_type ||
 
@@ -3645,6 +3938,8 @@ function getScrubMateOrderPushToken(){
 
 
   const deviceTokenUpdatedAt =
+    scrubMateOrderNativePushToken?.updatedAt ||
+
     user?.deviceTokenUpdatedAt ||
     user?.device_token_updated_at ||
     localStorage.getItem(
@@ -3685,7 +3980,7 @@ function getScrubMateOrderPushToken(){
 ========================================= */
 
 async function waitForScrubMateOrderPushToken(
-  timeoutMs = 3500
+  timeoutMs = 7000
 ){
 
   if(
@@ -3969,7 +4264,7 @@ async function saveScrubMateBooking(
 
     const orderPushToken =
       await waitForScrubMateOrderPushToken(
-        3500
+        7000
       );
 
 
@@ -3990,11 +4285,19 @@ async function saveScrubMateBooking(
             orderRow.device_token
           ),
 
+        tokenLength:
+          String(
+            orderRow.device_token || ""
+          ).length,
+
         platform:
           orderRow.device_platform,
 
         tokenType:
-          orderRow.device_token_type
+          orderRow.device_token_type,
+
+        updatedAt:
+          orderRow.device_token_updated_at
       }
     );
 
