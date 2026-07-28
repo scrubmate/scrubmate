@@ -3215,17 +3215,14 @@ input{
      HELP & SUPPORT POPUP
 ===================================================== -->
 
+<!-- SCRUB MATE — HELP & SUPPORT POPUP -->
 <div
   id="scrubSupportPopup"
   class="scrubSupportPopup"
+  aria-hidden="true"
 >
 
-  <!-- TOP SAFE GAP -->
-
   <div class="scrubSupportSafeGap"></div>
-
-
-  <!-- HEADER -->
 
   <div class="scrubSupportHeader">
 
@@ -3245,13 +3242,8 @@ input{
       </div>
 
       <div class="scrubSupportHeaderText">
-
         <h2>Help &amp; Support</h2>
-
-        <span id="scrubSupportOnlineText">
-          Scrub Mate Helper
-        </span>
-
+        <span id="scrubSupportOnlineText">Scrub Mate Helper</span>
       </div>
 
     </div>
@@ -3259,9 +3251,6 @@ input{
     <div class="scrubSupportHeaderSpace"></div>
 
   </div>
-
-
-  <!-- CHAT AREA -->
 
   <div
     class="scrubSupportChatArea"
@@ -3272,23 +3261,25 @@ input{
       class="scrubSupportLoading"
       id="scrubSupportLoading"
     >
-      <span></span>
-      <span></span>
-      <span></span>
+
+      <div class="scrubSupportLoadingAvatar">
+        <i class="fa-solid fa-headset"></i>
+      </div>
+
+      <div class="scrubSupportLoadingBubble">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+
     </div>
 
   </div>
-
-
-  <!-- ISSUE OPTIONS -->
 
   <div
     class="scrubSupportOptionsArea"
     id="scrubSupportOptionsArea"
   ></div>
-
-
-  <!-- ORDER SELECTION -->
 
   <div
     class="scrubSupportOrdersArea"
@@ -3299,13 +3290,8 @@ input{
     <div class="scrubSupportOrdersHeader">
 
       <div>
-
         <h3>Select an Order</h3>
-
-        <p>
-          Choose the order you need help with
-        </p>
-
+        <p>Choose the order you need help with</p>
       </div>
 
       <button
@@ -3325,30 +3311,18 @@ input{
 
   </div>
 
-
-  <!-- SOLVED BANNER -->
-
   <div
     class="scrubSupportSolvedBanner"
     id="scrubSupportSolvedBanner"
     hidden
   >
-
     <i class="fa-solid fa-circle-check"></i>
-
-    <span>
-      This support request has been solved.
-    </span>
-
+    <span>This support request has been solved.</span>
   </div>
-
-
-  <!-- MESSAGE INPUT -->
 
   <div class="scrubSupportComposer">
 
     <div class="scrubSupportInputWrap">
-
       <textarea
         id="scrubSupportMessageInput"
         rows="1"
@@ -3356,7 +3330,6 @@ input{
         placeholder="Select an issue first"
         disabled
       ></textarea>
-
     </div>
 
     <button
@@ -3372,9 +3345,6 @@ input{
   </div>
 
 </div>
-<!-- =========================================
-     SAVED ADDRESSES POPUP
-========================================= -->
 
 <div
   id="scrubHowItWorksPopup"
