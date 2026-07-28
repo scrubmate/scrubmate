@@ -291,12 +291,12 @@
     return [
       createSupportMessage(
         "support",
-        "Hi, I am the Scrub Mate Helper 👋"
+        "Hello 👋 How can we help you?"
       ),
 
       createSupportMessage(
         "support",
-        "Please select the type of issue you need help with."
+        "Choose an issue below to continue."
       )
     ];
 
@@ -715,18 +715,7 @@
         : "support";
 
 
-    const senderName =
-      safeSender === "user"
-        ? ""
-        : `
-            <span class="scrubSupportSenderName">
-              ${
-                safeSender === "system"
-                  ? "Scrub Mate"
-                  : "Scrub Mate Support"
-              }
-            </span>
-          `;
+    const senderName = "";
 
 
     const readIcon =
@@ -735,8 +724,19 @@
         : "";
 
 
+    const avatarHTML =
+      safeSender === "user"
+        ? ""
+        : `
+            <div class="scrubSupportMessageAvatar">
+              <i class="fa-solid fa-headset"></i>
+            </div>
+          `;
+
     return `
       <div class="scrubSupportMessageRow ${safeSender}">
+
+        ${avatarHTML}
 
         <div class="scrubSupportMessageBubble">
 
