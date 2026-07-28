@@ -41,6 +41,295 @@ const scrubProfileBookingsButton =
 let scrubMatePendingDeviceToken = null;
 
 
+const SCRUB_MATE_DEVICE_TOKEN_TABLE =
+  "scrubmate_device_tokens";
+
+let scrubMateTokenSupabaseSaving = false;
+let scrubMateTokenSupabaseRetryTimer = null;
+let scrubMateLastSupabaseTokenKey = "";
+
+
+/* Get the Supabase client already loaded by your website */
+
+function getScrubMateProfileSupabaseClient(){
+
+  if(
+    typeof supabaseClient !== "undefined" &&
+    supabaseClient?.from
+  ){
+    return supabaseClient;
+  }
+
+  if(window.supabaseClient?.from){
+    return window.supabaseClient;
+  }
+
+  if(window.scrubMateSupabase?.from){
+    return window.scrubMateSupabase;
+  }
+
+  return null;
+}
+
+
+/* Read the verified logged-in user and mobile */
+
+function getScrubMateTokenDatabaseUser(){
+
+  try{
+
+    const savedUser =
+      JSON.parse(
+        localStorage.getItem(
+          "scrubMateUser"
+        ) || "null"
+      );
+
+    const mobile =
+      String(
+        savedUser?.mobile ||
+        savedUser?.phoneNumber ||
+        localStorage.getItem(
+          "scrubMateMobile"
+        ) ||
+        ""
+      )
+        .replace(/\D/g, "")
+        .slice(-10);
+
+    const valid =
+      savedUser &&
+      savedUser.login === true &&
+      savedUser.verified === true &&
+      localStorage.getItem(
+        "scrubMateLoggedIn"
+      ) === "true" &&
+      localStorage.getItem(
+        "scrubMateGuestMode"
+      ) !== "true" &&
+      mobile.length === 10;
+
+    if(!valid){
+      return null;
+    }
+
+    return {
+      user:savedUser,
+      mobile:mobile,
+      name:
+        savedUser.name ||
+        localStorage.getItem(
+          "scrubMateName"
+        ) ||
+        null,
+      email:
+        savedUser.email ||
+        localStorage.getItem(
+          "scrubMateEmail"
+        ) ||
+        null
+    };
+
+  }catch(error){
+
+    console.error(
+      "Unable to prepare token database user:",
+      error
+    );
+
+    return null;
+  }
+}
+
+
+/* Retry if the Supabase script has not loaded yet */
+
+function scheduleScrubMateTokenSupabaseRetry(
+  tokenPayload,
+  delay = 1200
+){
+
+  if(scrubMateTokenSupabaseRetryTimer){
+    window.clearTimeout(
+      scrubMateTokenSupabaseRetryTimer
+    );
+  }
+
+  scrubMateTokenSupabaseRetryTimer =
+    window.setTimeout(
+      function(){
+
+        scrubMateTokenSupabaseRetryTimer =
+          null;
+
+        saveScrubMateDeviceTokenToSupabase(
+          tokenPayload
+        );
+
+      },
+      delay
+    );
+}
+
+
+/* Save or update this customer's token in Supabase */
+
+async function saveScrubMateDeviceTokenToSupabase(
+  tokenPayload
+){
+
+  if(
+    !tokenPayload ||
+    !tokenPayload.token
+  ){
+    return false;
+  }
+
+  const databaseUser =
+    getScrubMateTokenDatabaseUser();
+
+  if(!databaseUser){
+
+    console.log(
+      "Token Supabase save waiting for verified login"
+    );
+
+    return false;
+  }
+
+  const client =
+    getScrubMateProfileSupabaseClient();
+
+  if(!client){
+
+    console.log(
+      "Supabase client is not ready; retrying token save"
+    );
+
+    scheduleScrubMateTokenSupabaseRetry(
+      tokenPayload
+    );
+
+    return false;
+  }
+
+  if(scrubMateTokenSupabaseSaving){
+    return false;
+  }
+
+  const cleanToken =
+    String(tokenPayload.token || "")
+      .trim();
+
+  if(!cleanToken){
+    return false;
+  }
+
+  const platform =
+    String(
+      tokenPayload.platform || "ios"
+    ).trim();
+
+  const tokenType =
+    String(
+      tokenPayload.tokenType || "apns"
+    ).trim();
+
+  const tokenKey =
+    [
+      databaseUser.mobile,
+      cleanToken,
+      platform,
+      tokenType
+    ].join("|");
+
+  if(
+    scrubMateLastSupabaseTokenKey ===
+    tokenKey
+  ){
+    return true;
+  }
+
+  scrubMateTokenSupabaseSaving = true;
+
+  try{
+
+    const row = {
+      customer_mobile:
+        databaseUser.mobile,
+
+      customer_name:
+        databaseUser.name,
+
+      customer_email:
+        databaseUser.email,
+
+      device_token:
+        cleanToken,
+
+      device_platform:
+        platform,
+
+      device_token_type:
+        tokenType,
+
+      token_updated_at:
+        new Date().toISOString(),
+
+      last_seen_at:
+        new Date().toISOString()
+    };
+
+    const {
+      error
+    } = await client
+      .from(
+        SCRUB_MATE_DEVICE_TOKEN_TABLE
+      )
+      .upsert(
+        row,
+        {
+          onConflict:"customer_mobile"
+        }
+      );
+
+    if(error){
+      throw error;
+    }
+
+    scrubMateLastSupabaseTokenKey =
+      tokenKey;
+
+    console.log(
+      "APNs token saved to Supabase:",
+      databaseUser.mobile
+    );
+
+    return true;
+
+  }catch(error){
+
+    console.error(
+      "APNs token Supabase save failed:",
+      error
+    );
+
+    scheduleScrubMateTokenSupabaseRetry(
+      tokenPayload,
+      2500
+    );
+
+    return false;
+
+  }finally{
+
+    scrubMateTokenSupabaseSaving =
+      false;
+  }
+}
+
+
+
 /* Check whether the customer is fully logged in */
 
 function isScrubMateUserFullyLoggedIn(){
@@ -196,6 +485,20 @@ function saveScrubMateDeviceTokenAfterLogin(
       "Real APNs token saved with logged-in user:",
       savedUser.deviceToken
     );
+
+
+    /*
+     Save the token to Supabase after verified login.
+    */
+
+    saveScrubMateDeviceTokenToSupabase({
+      token:
+        savedUser.deviceToken,
+      platform:
+        savedUser.devicePlatform,
+      tokenType:
+        savedUser.deviceTokenType
+    });
 
 
     /*
@@ -904,6 +1207,18 @@ scrubLogoutButton.addEventListener(
     );
 
     scrubMatePendingDeviceToken = null;
+
+    scrubMateLastSupabaseTokenKey = "";
+
+    if(scrubMateTokenSupabaseRetryTimer){
+
+      window.clearTimeout(
+        scrubMateTokenSupabaseRetryTimer
+      );
+
+      scrubMateTokenSupabaseRetryTimer =
+        null;
+    }
 
 
     /* =====================================
