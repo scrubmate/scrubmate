@@ -662,6 +662,7 @@ input{
 }
 
 </style>
+<link rel="stylesheet" href="new.css">
 <link rel="stylesheet" href="copoun.css">
     <link rel="stylesheet" href="gotocart.css">
     <link rel="stylesheet" href="cartbar.css">
@@ -2667,19 +2668,18 @@ input{
     <!-- PROFILE OPTIONS -->
 
     <div class="scrubProfileMenu">
+<button
+  type="button"
+  class="scrubProfileMenuItem"
+  id="scrubSavedAddressesButton"
+>
+  <span class="scrubProfileMenuLeft">
+    <i class="fa-regular fa-address-book"></i>
+    <span>Saved addresses</span>
+  </span>
 
-      <button
-        type="button"
-        class="scrubProfileMenuItem"
-        id="scrubSavedAddressesButton"
-      >
-        <span class="scrubProfileMenuLeft">
-          <i class="fa-regular fa-address-book"></i>
-          <span>Saved addresses</span>
-        </span>
-
-        <i class="fa-solid fa-chevron-right"></i>
-      </button>
+  <i class="fa-solid fa-chevron-right"></i>
+</button>
 
 
       <button
@@ -3077,6 +3077,67 @@ input{
       </p>
 
       <div style="height:40px;"></div>
+
+    </div>
+
+  </div>
+
+</div>
+<!-- =========================================
+     SAVED ADDRESSES POPUP
+========================================= -->
+
+<div
+  id="scrubSavedAddressesPopup"
+  class="scrubSavedAddressesPopup"
+  aria-hidden="true"
+>
+
+  <div class="scrubSavedAddressesPage">
+
+    <!-- Header -->
+
+    <header class="scrubSavedAddressesHeader">
+
+      <button
+        type="button"
+        class="scrubSavedAddressesBackButton"
+        id="scrubSavedAddressesBackButton"
+        aria-label="Back"
+      >
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+
+      <h2>Saved Addresses</h2>
+
+      <div class="scrubSavedAddressesHeaderSpace"></div>
+
+    </header>
+
+    <!-- Content -->
+
+    <div class="scrubSavedAddressesContent">
+
+      <div
+        class="scrubSavedAddressesList"
+        id="scrubSavedAddressesList"
+      ></div>
+
+      <div
+        class="scrubSavedAddressesEmpty"
+        id="scrubSavedAddressesEmpty"
+        hidden
+      >
+        <div class="scrubSavedAddressesEmptyIcon">
+          <i class="fa-regular fa-address-book"></i>
+        </div>
+
+        <h3>No saved address</h3>
+
+        <p>
+          Your selected location will appear here.
+        </p>
+      </div>
 
     </div>
 
@@ -3849,6 +3910,7 @@ input{
   </div>
 
 </section>
+
 <div id="fanCleaningPopup"></div>
 
 <div id="bedroomCleaningPopup"></div>
@@ -3870,6 +3932,7 @@ input{
 <div id="fridgeCleaningPopup"></div>
 <div id="windowCleaningPopup"></div>
 <script src="loginprofile.js"></script>
+<script src="new.js"></script>
 <script src="servicescripts/fancleaning.js"></script>
 <script src="servicescripts/bedroomcleaning.js"></script>
 <script src="servicescripts/shopcleaning.js"></script>
@@ -4628,6 +4691,8 @@ window.addEventListener("DOMContentLoaded", function(){
   autoLocationPage.classList.remove("show");
 
 });
+
+
 </script>
 
 </body>
