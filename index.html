@@ -2609,7 +2609,17 @@ input{
           Edit profile
           <i class="fa-solid fa-chevron-right"></i>
         </button>
-
+<div
+  id="scrubDeviceTokenStatus"
+  style="
+    font-size:11px;
+    color:#888;
+    margin:6px 16px 0;
+    word-break:break-all;
+  "
+>
+  Device Token: Not received
+</div>
       </div>
 
     </div>
@@ -2635,40 +2645,7 @@ input{
       bookings
     </span>
   </button>
-<button
-  type="button"
-  class="scrubEditProfileButton"
-  id="scrubEditProfileButton"
->
-  Edit profile
-  <i class="fa-solid fa-chevron-right"></i>
-</button>
 
-<div
-  class="scrubProfileTokenCard"
-  id="scrubProfileTokenCard"
-  hidden
->
-  <div class="scrubProfileTokenTop">
-    <span class="scrubProfileTokenTitle">
-      iOS Device Token
-    </span>
-
-    <span
-      class="scrubProfileTokenStatus"
-      id="scrubProfileTokenStatus"
-    >
-      Connected
-    </span>
-  </div>
-
-  <div
-    class="scrubProfileTokenValue"
-    id="scrubProfileTokenValue"
-  >
-    Token unavailable
-  </div>
-</div>
 
  <button
   type="button"
@@ -5366,7 +5343,24 @@ window.addEventListener("DOMContentLoaded", function(){
   autoLocationPage.classList.remove("show");
 
 });
+const scrubDeviceTokenStatus =
+  document.getElementById("scrubDeviceTokenStatus");
 
+function updateScrubDeviceToken() {
+  const token = localStorage.getItem("scrubMateDeviceToken");
+
+  scrubDeviceTokenStatus.textContent =
+    token
+      ? "Device Token: " + token
+      : "Device Token: Not received";
+}
+
+updateScrubDeviceToken();
+
+window.addEventListener(
+  "scrubMateDeviceTokenReceived",
+  updateScrubDeviceToken
+);
 
 </script>
 
