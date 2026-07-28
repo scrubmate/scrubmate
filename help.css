@@ -900,3 +900,44 @@
     transform:translateY(0);
   }
 }
+.scrubProfileTokenCard{
+  margin-top:12px;
+  padding:14px;
+  border:1px solid rgba(20,185,187,.22);
+  border-radius:16px;
+  background:rgba(20,185,187,.07);
+}
+
+.scrubProfileTokenTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:9px;
+}
+
+.scrubProfileTokenTitle{
+  font-size:13px;
+  font-weight:700;
+  color:#263238;
+}
+
+.scrubProfileTokenStatus{
+  padding:4px 8px;
+  border-radius:999px;
+  background:#14b9bb;
+  color:#fff;
+  font-size:10px;
+  font-weight:700;
+}
+
+.scrubProfileTokenValue{
+  font-size:11px;
+  line-height:1.5;
+  color:#546e7a;
+  word-break:break-all;
+  font-family:monospace;
+}
+.scrubProfileTokenStatus.not-connected{
+  background:#ff9800;
+}
