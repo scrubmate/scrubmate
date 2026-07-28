@@ -1856,8 +1856,17 @@ quantityWrap.append(
 const deliveryDetails =
   getScurbDeliveryDetails();
 
-const deliveryFee =
+let deliveryFee =
   Number(deliveryDetails.fee || 0);
+
+
+/* FREE DELIVERY FOR ₹300 OR ABOVE */
+
+if(currentTotal >= 300){
+
+  deliveryFee = 0;
+
+}
 
 
 /* COUPON DISCOUNT */
