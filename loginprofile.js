@@ -738,10 +738,17 @@ scrubProfilePage.style.opacity = "";
   scrubProfilePage.classList.add("show");
 
   document.body.style.overflow = "hidden";
-
+updateScrubProfileDeviceToken();
 }
 
+window.addEventListener(
+  "scrubMateLoggedInDeviceTokenSaved",
+  function(){
 
+    updateScrubProfileDeviceToken();
+
+  }
+);
 function closeScrubProfilePage(){
 
   scrubProfilePage.classList.remove(
