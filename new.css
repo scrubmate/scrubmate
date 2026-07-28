@@ -1296,3 +1296,248 @@
 .scrubDeleteAccountConfirm.is-deleting{
   pointer-events:none;
 }
+
+/* =========================================
+   MY COUPONS POPUP
+========================================= */
+.scrubCouponsPopup{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+
+  display:flex;
+  flex-direction:column;
+
+  width:100%;
+  height:100dvh;
+
+  background:#f7f8fa;
+
+  /* ADD THIS */
+  padding-top:50px;
+
+  box-sizing:border-box;
+
+  visibility:hidden;
+  opacity:0;
+  pointer-events:none;
+
+  transform:translateX(100%);
+
+  transition:
+    transform .3s ease,
+    opacity .25s ease,
+    visibility .25s ease;
+}
+
+
+.scrubCouponsPopup.show{
+  visibility:visible;
+  opacity:1;
+  pointer-events:auto;
+
+  transform:translateX(0);
+}
+
+
+/* =========================================
+   HEADER
+========================================= */
+
+.scrubCouponsHeader{
+  flex-shrink:0;
+
+  display:grid;
+  grid-template-columns:44px 1fr 44px;
+  align-items:center;
+
+  min-height:62px;
+
+  padding:
+    env(safe-area-inset-top)
+    14px
+    0;
+
+ 
+
+  border-bottom:1px solid #eeeeee;
+}
+
+
+.scrubCouponsHeader h2{
+  margin:0;
+
+  text-align:center;
+
+  font-family:"Manrope",sans-serif;
+  font-size:18px;
+  font-weight:800;
+
+  color:#181818;
+}
+
+
+.scrubCouponsBackButton{
+  width:40px;
+  height:40px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  border:none;
+  outline:none;
+
+  background:transparent;
+
+  color:#171717;
+
+  font-size:18px;
+
+  cursor:pointer;
+
+  -webkit-tap-highlight-color:transparent;
+}
+
+
+.scrubCouponsHeaderSpace{
+  width:40px;
+  height:40px;
+}
+
+
+/* =========================================
+   CONTENT
+========================================= */
+
+.scrubCouponsContent{
+  flex:1;
+
+  padding:
+    22px
+    16px
+    calc(22px + env(safe-area-inset-bottom));
+
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+
+
+/* =========================================
+   COUPON CARD
+========================================= */
+
+.scrubCouponCard{
+  position:relative;
+
+  display:flex;
+  align-items:center;
+  gap:15px;
+
+  width:100%;
+  max-width:520px;
+
+  margin:0 auto;
+  padding:20px 18px;
+
+  background:#ffffff;
+
+  border:1px solid rgba(20,185,187,.25);
+  border-radius:18px;
+
+  box-shadow:
+    0 10px 30px
+    rgba(20,185,187,.10);
+
+  overflow:hidden;
+}
+
+
+.scrubCouponCard::before,
+.scrubCouponCard::after{
+  content:"";
+
+  position:absolute;
+  top:50%;
+
+  width:22px;
+  height:22px;
+
+  background:#f7f8fa;
+
+  border-radius:50%;
+
+  transform:translateY(-50%);
+}
+
+
+.scrubCouponCard::before{
+  left:-12px;
+
+  border-right:
+    1px solid rgba(20,185,187,.25);
+}
+
+
+.scrubCouponCard::after{
+  right:-12px;
+
+  border-left:
+    1px solid rgba(20,185,187,.25);
+}
+
+
+.scrubCouponIcon{
+  flex-shrink:0;
+
+  width:54px;
+  height:54px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  border-radius:16px;
+
+  background:rgba(20,185,187,.12);
+
+  color:#14b9bb;
+
+  font-size:24px;
+}
+
+
+.scrubCouponDetails{
+  min-width:0;
+}
+
+
+.scrubCouponDetails h3{
+  margin:0 0 7px;
+
+  font-family:"Manrope",sans-serif;
+  font-size:18px;
+  font-weight:900;
+  letter-spacing:.4px;
+
+  color:#14b9bb;
+}
+
+
+.scrubCouponDetails p{
+  margin:0;
+
+  font-family:"Manrope",sans-serif;
+  font-size:14px;
+  font-weight:500;
+  line-height:1.6;
+
+  color:#444444;
+}
+
+
+.scrubCouponDetails strong{
+  font-weight:900;
+
+  color:#171717;
+}
