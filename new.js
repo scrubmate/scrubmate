@@ -2868,3 +2868,365 @@
   );
 
 })();
+
+/* =========================================
+   MY COUPONS POPUP
+========================================= */
+
+(function(){
+
+  const couponsPopup =
+    document.getElementById(
+      "scrubCouponsPopup"
+    );
+
+
+  /* =========================================
+     OPEN POPUP
+  ========================================= */
+
+  function openScrubCoupons(){
+
+    if(!couponsPopup){
+
+      console.error(
+        "scrubCouponsPopup not found"
+      );
+
+      return;
+
+    }
+
+
+    document
+      .getElementById(
+        "scrubProfilePage"
+      )
+      ?.classList.remove(
+        "show"
+      );
+
+
+    couponsPopup
+      .classList.add(
+        "show"
+      );
+
+
+    couponsPopup
+      .setAttribute(
+        "aria-hidden",
+        "false"
+      );
+
+
+    document.body.style.overflow =
+      "hidden";
+
+  }
+
+
+  /* =========================================
+     CLOSE POPUP
+  ========================================= */
+
+  function closeScrubCoupons(){
+
+    if(!couponsPopup){
+      return;
+    }
+
+
+    couponsPopup
+      .classList.remove(
+        "show"
+      );
+
+
+    couponsPopup
+      .setAttribute(
+        "aria-hidden",
+        "true"
+      );
+
+
+    document.body.style.overflow =
+      "";
+
+
+    document
+      .getElementById(
+        "scrubProfilePage"
+      )
+      ?.classList.add(
+        "show"
+      );
+
+  }
+
+
+  /* =========================================
+     GLOBAL FUNCTIONS
+  ========================================= */
+
+  window.openScrubCoupons =
+    openScrubCoupons;
+
+  window.closeScrubCoupons =
+    closeScrubCoupons;
+
+
+  /* =========================================
+     BUTTON EVENTS
+  ========================================= */
+
+  document.addEventListener(
+    "click",
+    function(event){
+
+      const openButton =
+        event.target.closest(
+          "#scrubProfileCouponsButton"
+        );
+
+
+      if(openButton){
+
+        event.preventDefault();
+
+        openScrubCoupons();
+
+        return;
+
+      }
+
+
+      const backButton =
+        event.target.closest(
+          "#scrubCouponsBackButton"
+        );
+
+
+      if(backButton){
+
+        event.preventDefault();
+
+        closeScrubCoupons();
+
+      }
+
+    }
+  );
+
+
+  /* =========================================
+     ESCAPE KEY
+  ========================================= */
+
+  document.addEventListener(
+    "keydown",
+    function(event){
+
+      if(
+        event.key === "Escape" &&
+        couponsPopup
+          ?.classList.contains(
+            "show"
+          )
+      ){
+
+        closeScrubCoupons();
+
+      }
+
+    }
+  );
+
+
+  /* =========================================
+     SWIPE BACK — BOTH SIDES
+  ========================================= */
+
+  let startX = 0;
+  let startY = 0;
+  let currentX = 0;
+  let currentY = 0;
+
+  let fromLeft = false;
+  let fromRight = false;
+  let swipeActive = false;
+
+  const edgeSize = 45;
+  const closeDistance = 85;
+
+
+  couponsPopup
+    ?.addEventListener(
+      "touchstart",
+      function(event){
+
+        if(
+          !couponsPopup.classList.contains(
+            "show"
+          ) ||
+          event.touches.length !== 1
+        ){
+          return;
+        }
+
+
+        const touch =
+          event.touches[0];
+
+
+        startX =
+          touch.clientX;
+
+        startY =
+          touch.clientY;
+
+        currentX =
+          touch.clientX;
+
+        currentY =
+          touch.clientY;
+
+
+        fromLeft =
+          touch.clientX <= edgeSize;
+
+
+        fromRight =
+          touch.clientX >=
+          window.innerWidth - edgeSize;
+
+
+        swipeActive =
+          fromLeft || fromRight;
+
+      },
+      {
+        passive:true
+      }
+    );
+
+
+  couponsPopup
+    ?.addEventListener(
+      "touchmove",
+      function(event){
+
+        if(
+          !swipeActive ||
+          event.touches.length !== 1
+        ){
+          return;
+        }
+
+
+        const touch =
+          event.touches[0];
+
+
+        currentX =
+          touch.clientX;
+
+        currentY =
+          touch.clientY;
+
+
+        const moveX =
+          currentX - startX;
+
+        const moveY =
+          currentY - startY;
+
+
+        if(
+          Math.abs(moveY) >
+          Math.abs(moveX)
+        ){
+
+          swipeActive = false;
+
+          return;
+
+        }
+
+
+        const validMovement =
+          (
+            fromLeft &&
+            moveX > 0
+          ) ||
+          (
+            fromRight &&
+            moveX < 0
+          );
+
+
+        if(validMovement){
+
+          event.preventDefault();
+
+        }
+
+      },
+      {
+        passive:false
+      }
+    );
+
+
+  couponsPopup
+    ?.addEventListener(
+      "touchend",
+      function(){
+
+        if(!swipeActive){
+          return;
+        }
+
+
+        const moveX =
+          currentX - startX;
+
+        const moveY =
+          currentY - startY;
+
+
+        const validLeftSwipe =
+          fromLeft &&
+          moveX >= closeDistance;
+
+
+        const validRightSwipe =
+          fromRight &&
+          moveX <= -closeDistance;
+
+
+        if(
+          Math.abs(moveX) >
+          Math.abs(moveY) &&
+          (
+            validLeftSwipe ||
+            validRightSwipe
+          )
+        ){
+
+          closeScrubCoupons();
+
+        }
+
+
+        swipeActive = false;
+        fromLeft = false;
+        fromRight = false;
+
+      },
+      {
+        passive:true
+      }
+    );
+
+})();
