@@ -24,6 +24,319 @@ const scrubProfileBookingsButton =
   document.getElementById("scrubProfileBookingsButton");
 
 
+/* =========================================
+   IOS APNS TOKEN — SAVE ONLY AFTER LOGIN
+========================================= */
+
+/*
+ The real APNs token can arrive from Swift before or after login.
+
+ Important:
+ - The token is NOT saved to localStorage for a guest.
+ - It is kept temporarily only in JavaScript memory.
+ - After the user is fully logged in and verified, it is added to
+   the same "scrubMateUser" object that contains the login details.
+*/
+
+let scrubMatePendingDeviceToken = null;
+
+
+/* Check whether the customer is fully logged in */
+
+function isScrubMateUserFullyLoggedIn(){
+
+  try{
+
+    const savedUser =
+      JSON.parse(
+        localStorage.getItem(
+          "scrubMateUser"
+        ) || "null"
+      );
+
+    return Boolean(
+      savedUser &&
+      savedUser.login === true &&
+      savedUser.verified === true &&
+      localStorage.getItem(
+        "scrubMateLoggedIn"
+      ) === "true" &&
+      localStorage.getItem(
+        "scrubMateGuestMode"
+      ) !== "true"
+    );
+
+  }catch(error){
+
+    console.error(
+      "Unable to check Scrub Mate login:",
+      error
+    );
+
+    return false;
+  }
+
+}
+
+
+/* Save token together with the logged-in user details */
+
+function saveScrubMateDeviceTokenAfterLogin(
+  tokenPayload
+){
+
+  if(
+    !tokenPayload ||
+    !tokenPayload.token
+  ){
+    return false;
+  }
+
+
+  if(!isScrubMateUserFullyLoggedIn()){
+
+    /*
+     User has not logged in yet.
+     Keep it only in runtime memory—not localStorage.
+    */
+
+    scrubMatePendingDeviceToken = {
+      token:String(tokenPayload.token),
+      platform:String(
+        tokenPayload.platform || "ios"
+      ),
+      tokenType:String(
+        tokenPayload.tokenType || "apns"
+      )
+    };
+
+    console.log(
+      "APNs token waiting for customer login"
+    );
+
+    return false;
+  }
+
+
+  try{
+
+    const savedUser =
+      JSON.parse(
+        localStorage.getItem(
+          "scrubMateUser"
+        ) || "null"
+      );
+
+
+    if(!savedUser){
+      return false;
+    }
+
+
+    const cleanToken =
+      String(tokenPayload.token).trim();
+
+    if(!cleanToken){
+      return false;
+    }
+
+
+    /*
+     Add the token to the same login-details object.
+    */
+
+    savedUser.deviceToken =
+      cleanToken;
+
+    savedUser.devicePlatform =
+      String(
+        tokenPayload.platform || "ios"
+      );
+
+    savedUser.deviceTokenType =
+      String(
+        tokenPayload.tokenType || "apns"
+      );
+
+    savedUser.deviceTokenUpdatedAt =
+      new Date().toISOString();
+
+
+    localStorage.setItem(
+      "scrubMateUser",
+      JSON.stringify(savedUser)
+    );
+
+
+    /*
+     Also keep separate keys for easy access by booking,
+     support, or Supabase code.
+    */
+
+    localStorage.setItem(
+      "scrubMateDeviceToken",
+      savedUser.deviceToken
+    );
+
+    localStorage.setItem(
+      "scrubMateDevicePlatform",
+      savedUser.devicePlatform
+    );
+
+    localStorage.setItem(
+      "scrubMateDeviceTokenType",
+      savedUser.deviceTokenType
+    );
+
+
+    scrubMatePendingDeviceToken = null;
+
+
+    console.log(
+      "Real APNs token saved with logged-in user:",
+      savedUser.deviceToken
+    );
+
+
+    /*
+     Notify other JavaScript files that login details now
+     include the iOS push token.
+    */
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "scrubMateLoggedInDeviceTokenSaved",
+        {
+          detail:{
+            user:savedUser,
+            token:savedUser.deviceToken,
+            platform:savedUser.devicePlatform,
+            tokenType:savedUser.deviceTokenType
+          }
+        }
+      )
+    );
+
+
+    return true;
+
+  }catch(error){
+
+    console.error(
+      "Unable to save APNs token with login details:",
+      error
+    );
+
+    return false;
+  }
+
+}
+
+
+/*
+ Swift calls this function with:
+
+ {
+   token:"...",
+   platform:"ios",
+   tokenType:"apns"
+ }
+*/
+
+window.onScrubMateDeviceTokenReceived =
+  function(tokenPayload){
+
+    saveScrubMateDeviceTokenAfterLogin(
+      tokenPayload
+    );
+
+  };
+
+
+/*
+ Swift also sends a browser event.
+ This keeps the bridge working even when the callback was
+ registered after the native code sent the token.
+*/
+
+window.addEventListener(
+  "scrubMateDeviceTokenReceived",
+  function(event){
+
+    if(
+      event &&
+      event.detail
+    ){
+
+      saveScrubMateDeviceTokenAfterLogin(
+        event.detail
+      );
+
+    }
+
+  }
+);
+
+
+/*
+ Call this immediately after your OTP/details login code saves:
+
+ localStorage.setItem("scrubMateUser", ...);
+ localStorage.setItem("scrubMateLoggedIn", "true");
+
+ It will attach the pending token to those login details.
+*/
+
+window.syncScrubMateDeviceTokenAfterLogin =
+  function(){
+
+    if(!scrubMatePendingDeviceToken){
+      return false;
+    }
+
+    return saveScrubMateDeviceTokenAfterLogin(
+      scrubMatePendingDeviceToken
+    );
+
+  };
+
+
+/*
+ Automatic fallback:
+ If login is completed elsewhere in your code, this detects it
+ and attaches the pending token without changing that login code.
+*/
+
+const scrubMateTokenLoginWatcher =
+  window.setInterval(
+    function(){
+
+      if(
+        scrubMatePendingDeviceToken &&
+        isScrubMateUserFullyLoggedIn()
+      ){
+
+        const saved =
+          saveScrubMateDeviceTokenAfterLogin(
+            scrubMatePendingDeviceToken
+          );
+
+        if(saved){
+
+          window.clearInterval(
+            scrubMateTokenLoginWatcher
+          );
+
+        }
+
+      }
+
+    },
+    700
+  );
+
+
+
 function getScrubMateLoggedInUser(){
 
   try{
@@ -571,6 +884,26 @@ scrubLogoutButton.addEventListener(
     localStorage.removeItem(
       "scrubMateLoginFromGuestProfile"
     );
+
+
+    /*
+     Remove the push token from this logged-in session.
+     A new login will save the current real APNs token again.
+    */
+
+    localStorage.removeItem(
+      "scrubMateDeviceToken"
+    );
+
+    localStorage.removeItem(
+      "scrubMateDevicePlatform"
+    );
+
+    localStorage.removeItem(
+      "scrubMateDeviceTokenType"
+    );
+
+    scrubMatePendingDeviceToken = null;
 
 
     /* =====================================
