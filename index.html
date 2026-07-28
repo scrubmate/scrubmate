@@ -2735,18 +2735,18 @@ input{
       </button>
 
 
-      <button
-        type="button"
-        class="scrubProfileMenuItem"
-        id="scrubDeleteAccountButton"
-      >
-        <span class="scrubProfileMenuLeft">
-          <i class="fa-regular fa-user-xmark"></i>
-          <span>Request account deletion</span>
-        </span>
+     <button
+  type="button"
+  class="scrubProfileMenuItem"
+  id="scrubDeleteAccountButton"
+>
+  <span class="scrubProfileMenuLeft">
+    <i class="fa-regular fa-user-xmark"></i>
+    <span>Request account deletion</span>
+  </span>
 
-        <i class="fa-solid fa-chevron-right"></i>
-      </button>
+  <i class="fa-solid fa-chevron-right"></i>
+</button>
 
 
       <button
@@ -2772,6 +2772,84 @@ input{
   </main>
 
 </section>
+<!-- =========================================
+     DELETE ACCOUNT BOTTOM SHEET
+========================================= -->
+
+<div
+  id="scrubDeleteAccountOverlay"
+  class="scrubDeleteAccountOverlay"
+  aria-hidden="true"
+>
+  <div
+    id="scrubDeleteAccountSheet"
+    class="scrubDeleteAccountSheet"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="scrubDeleteAccountTitle"
+  >
+
+    <button
+      type="button"
+      class="scrubDeleteAccountClose"
+      id="scrubDeleteAccountClose"
+      aria-label="Close"
+    >
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <div class="scrubDeleteAccountIcon">
+      <i class="fa-regular fa-user-xmark"></i>
+    </div>
+
+    <h2 id="scrubDeleteAccountTitle">
+      Delete your account?
+    </h2>
+
+    <p>
+      Are you sure you want to delete your account?
+      Deleting your account may permanently remove your profile,
+      saved details and all your orders.
+    </p>
+
+    <div
+      id="scrubDeleteAccountError"
+      class="scrubDeleteAccountError"
+      hidden
+    ></div>
+
+    <div class="scrubDeleteAccountActions">
+
+      <button
+        type="button"
+        class="scrubDeleteAccountCancel"
+        id="scrubDeleteAccountCancel"
+      >
+        No
+      </button>
+
+      <button
+        type="button"
+        class="scrubDeleteAccountConfirm"
+        id="scrubDeleteAccountConfirm"
+      >
+        <span
+          id="scrubDeleteAccountProgress"
+          class="scrubDeleteAccountProgress"
+        ></span>
+
+        <span
+          id="scrubDeleteAccountConfirmText"
+          class="scrubDeleteAccountConfirmText"
+        >
+          Yes
+        </span>
+      </button>
+
+    </div>
+
+  </div>
+</div>
 <!-- =========================================
      TERMS OF SERVICE POPUP
 ========================================= -->
@@ -3086,6 +3164,389 @@ input{
 <!-- =========================================
      SAVED ADDRESSES POPUP
 ========================================= -->
+
+<div
+  id="scrubHowItWorksPopup"
+  class="scrubHowItWorksPopup"
+  aria-hidden="true"
+>
+
+  <div class="scrubHowItWorksPage">
+
+    <!-- HEADER -->
+
+    <header class="scrubHowItWorksHeader">
+
+      <button
+        type="button"
+        class="scrubHowItWorksBackButton"
+        id="scrubHowItWorksBackButton"
+        aria-label="Back"
+      >
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+
+      <h2>How It Works</h2>
+
+      <div class="scrubHowItWorksHeaderSpace"></div>
+
+    </header>
+
+
+    <!-- CONTENT -->
+
+    <div class="scrubHowItWorksContent">
+
+      
+
+
+      <!-- =====================================
+           VIDEO 1
+      ====================================== -->
+
+      <article class="scrubHowItWorksCard">
+
+        <div
+          class="scrubHowItWorksVideoBox"
+          data-video-path="video/1st.mp4"
+        >
+
+          <video
+            class="scrubHowItWorksVideo"
+            muted
+            playsinline
+            preload="none"
+            disablepictureinpicture
+          ></video>
+
+
+          <button
+            type="button"
+            class="scrubHowItWorksPlayButton"
+            aria-label="Play choose service video"
+          >
+
+            <span class="scrubHowItWorksPlayCircle">
+              <i class="fa-solid fa-play"></i>
+            </span>
+
+            <span class="scrubHowItWorksPlayLabel">
+              Play video
+            </span>
+
+          </button>
+
+
+          <div
+            class="scrubHowItWorksLoader"
+            hidden
+          >
+            <span class="scrubHowItWorksSpinner"></span>
+            <p>Loading video...</p>
+          </div>
+
+        </div>
+
+
+        <div class="scrubHowItWorksCardContent">
+
+          <span class="scrubHowItWorksStep">
+            Step 1
+          </span>
+
+          <h3>Choose your service</h3>
+
+          <p>
+            Browse the available cleaning and household services.
+            Select the service that matches your requirement, such as
+            bathroom cleaning, fridge cleaning, dusting, kitchen help,
+            ironing or laundry.
+          </p>
+
+        </div>
+
+      </article>
+
+
+      <!-- =====================================
+           VIDEO 2
+      ====================================== -->
+
+      <article class="scrubHowItWorksCard">
+
+        <div
+          class="scrubHowItWorksVideoBox"
+          data-video-path="video/2.mp4"
+        >
+
+          <video
+            class="scrubHowItWorksVideo"
+            muted
+            playsinline
+            preload="none"
+            disablepictureinpicture
+          ></video>
+
+
+          <button
+            type="button"
+            class="scrubHowItWorksPlayButton"
+            aria-label="Play add service video"
+          >
+
+            <span class="scrubHowItWorksPlayCircle">
+              <i class="fa-solid fa-play"></i>
+            </span>
+
+            <span class="scrubHowItWorksPlayLabel">
+              Play video
+            </span>
+
+          </button>
+
+
+          <div
+            class="scrubHowItWorksLoader"
+            hidden
+          >
+            <span class="scrubHowItWorksSpinner"></span>
+            <p>Loading video...</p>
+          </div>
+
+        </div>
+
+
+        <div class="scrubHowItWorksCardContent">
+
+          <span class="scrubHowItWorksStep">
+            Step 2
+          </span>
+
+          <h3>Add the required service</h3>
+
+          <p>
+            Tap the add button for the selected service. You can increase
+            or decrease the quantity based on how much work you need at
+            your home, shop or other location.
+          </p>
+
+        </div>
+
+      </article>
+
+
+      <!-- =====================================
+           VIDEO 3
+      ====================================== -->
+
+      <article class="scrubHowItWorksCard">
+
+        <div
+          class="scrubHowItWorksVideoBox"
+          data-video-path="video/3.mp4"
+        >
+
+          <video
+            class="scrubHowItWorksVideo"
+            muted
+            playsinline
+            preload="none"
+            disablepictureinpicture
+          ></video>
+
+
+          <button
+            type="button"
+            class="scrubHowItWorksPlayButton"
+            aria-label="Play location video"
+          >
+
+            <span class="scrubHowItWorksPlayCircle">
+              <i class="fa-solid fa-play"></i>
+            </span>
+
+            <span class="scrubHowItWorksPlayLabel">
+              Play video
+            </span>
+
+          </button>
+
+
+          <div
+            class="scrubHowItWorksLoader"
+            hidden
+          >
+            <span class="scrubHowItWorksSpinner"></span>
+            <p>Loading video...</p>
+          </div>
+
+        </div>
+
+
+        <div class="scrubHowItWorksCardContent">
+
+          <span class="scrubHowItWorksStep">
+            Step 3
+          </span>
+
+          <h3>Confirm your location</h3>
+
+          <p>
+            Select your current location and provide the correct house,
+            street, village or landmark details. This helps the service
+            partner reach your address without difficulty.
+          </p>
+
+        </div>
+
+      </article>
+
+
+      <!-- =====================================
+           VIDEO 4
+      ====================================== -->
+
+      <article class="scrubHowItWorksCard">
+
+        <div
+          class="scrubHowItWorksVideoBox"
+          data-video-path="video/4.mp4"
+        >
+
+          <video
+            class="scrubHowItWorksVideo"
+            muted
+            playsinline
+            preload="none"
+            disablepictureinpicture
+          ></video>
+
+
+          <button
+            type="button"
+            class="scrubHowItWorksPlayButton"
+            aria-label="Play booking confirmation video"
+          >
+
+            <span class="scrubHowItWorksPlayCircle">
+              <i class="fa-solid fa-play"></i>
+            </span>
+
+            <span class="scrubHowItWorksPlayLabel">
+              Play video
+            </span>
+
+          </button>
+
+
+          <div
+            class="scrubHowItWorksLoader"
+            hidden
+          >
+            <span class="scrubHowItWorksSpinner"></span>
+            <p>Loading video...</p>
+          </div>
+
+        </div>
+
+
+        <div class="scrubHowItWorksCardContent">
+
+          <span class="scrubHowItWorksStep">
+            Step 4
+          </span>
+
+          <h3>Place your booking</h3>
+
+          <p>
+            Review the selected services, total amount and location.
+            Confirm the booking after checking all details. Your booking
+            will then be sent to an available service partner.
+          </p>
+
+        </div>
+
+      </article>
+
+
+      <!-- =====================================
+           VIDEO 5
+      ====================================== -->
+
+      <article class="scrubHowItWorksCard">
+
+        <div
+          class="scrubHowItWorksVideoBox"
+          data-video-path="video/5.mp4"
+        >
+
+          <video
+            class="scrubHowItWorksVideo"
+            muted
+            playsinline
+            preload="none"
+            disablepictureinpicture
+          ></video>
+
+
+          <button
+            type="button"
+            class="scrubHowItWorksPlayButton"
+            aria-label="Play service completion video"
+          >
+
+            <span class="scrubHowItWorksPlayCircle">
+              <i class="fa-solid fa-play"></i>
+            </span>
+
+            <span class="scrubHowItWorksPlayLabel">
+              Play video
+            </span>
+
+          </button>
+
+
+          <div
+            class="scrubHowItWorksLoader"
+            hidden
+          >
+            <span class="scrubHowItWorksSpinner"></span>
+            <p>Loading video...</p>
+          </div>
+
+        </div>
+
+
+        <div class="scrubHowItWorksCardContent">
+
+          <span class="scrubHowItWorksStep">
+            Step 5
+          </span>
+
+          <h3>Get the service and pay</h3>
+
+          <p>
+            The assigned service partner will reach your location and
+            complete the selected work. After checking the completed
+            service, make the payment using the available payment option.
+          </p>
+
+        </div>
+
+      </article>
+
+
+      <p class="scrubHowItWorksFooter">
+        Easy booking, trusted service and convenient household help
+        with Scrub Mate.
+      </p>
+
+    </div>
+
+  </div>
+
+</div>
+
 
 <div
   id="scrubSavedAddressesPopup"
