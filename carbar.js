@@ -3548,7 +3548,9 @@ function buildScrubMateOrderRow(
   paymentMethod,
   paymentStatus,
   razorpayDetails = {}
-){
+)
+{
+
 
   const user =
     getScrubMateBookingUser();
@@ -3562,7 +3564,20 @@ function buildScrubMateOrderRow(
   const couponApplied =
     scurbAppliedCoupon &&
     bill.couponDiscount > 0;
+const deviceToken =
+  localStorage.getItem(
+    "scrubMateDeviceToken"
+  ) || null;
 
+const devicePlatform =
+  localStorage.getItem(
+    "scrubMateDeviceTokenPlatform"
+  ) || getScrubMatePlatform();
+
+const deviceTokenType =
+  localStorage.getItem(
+    "scrubMateDeviceTokenType"
+  ) || null;
   return {
     customer_name:user.name,
     customer_mobile:user.mobile,
@@ -3649,7 +3664,15 @@ function buildScrubMateOrderRow(
 
     booking_status:"placed",
     booking_type:"instant",
+device_token:deviceToken,
+device_platform:devicePlatform,
+device_token_type:deviceTokenType,
 
+app_platform:getScrubMatePlatform(),
+app_version:
+  localStorage.getItem(
+    "scrubMateAppVersion"
+  ) || null,
     app_platform:getScrubMatePlatform(),
     app_version:
       localStorage.getItem("scrubMateAppVersion") || null,
