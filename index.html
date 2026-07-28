@@ -2609,17 +2609,7 @@ input{
           Edit profile
           <i class="fa-solid fa-chevron-right"></i>
         </button>
-<div
-  id="scrubDeviceTokenStatus"
-  style="
-    font-size:11px;
-    color:#888;
-    margin:6px 16px 0;
-    word-break:break-all;
-  "
->
-  Device Token: Not received
-</div>
+
       </div>
 
     </div>
@@ -5343,24 +5333,7 @@ window.addEventListener("DOMContentLoaded", function(){
   autoLocationPage.classList.remove("show");
 
 });
-const scrubDeviceTokenStatus =
-  document.getElementById("scrubDeviceTokenStatus");
 
-function updateScrubDeviceToken() {
-  const token = localStorage.getItem("scrubMateDeviceToken");
-
-  scrubDeviceTokenStatus.textContent =
-    token
-      ? "Device Token: " + token
-      : "Device Token: Not received";
-}
-
-updateScrubDeviceToken();
-
-window.addEventListener(
-  "scrubMateDeviceTokenReceived",
-  updateScrubDeviceToken
-);
 
 </script>
 
