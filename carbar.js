@@ -3541,6 +3541,125 @@ function getScrubMatePlatform(){
 
 
 /* =========================================
+   GET LOGGED-IN USER PUSH TOKEN
+========================================= */
+
+function getScrubMateOrderPushToken(){
+
+  let user = null;
+
+  try{
+
+    user =
+      JSON.parse(
+        localStorage.getItem(
+          "scrubMateUser"
+        ) || "null"
+      );
+
+  }catch(error){
+
+    console.error(
+      "Unable to read user push token:",
+      error
+    );
+
+    user = null;
+  }
+
+
+  const isLoggedIn =
+    localStorage.getItem(
+      "scrubMateLoggedIn"
+    ) === "true";
+
+  const isGuest =
+    localStorage.getItem(
+      "scrubMateGuestMode"
+    ) === "true";
+
+
+  const validLoggedInUser =
+    isLoggedIn &&
+    !isGuest &&
+    user &&
+    user.login === true &&
+    user.verified === true;
+
+
+  if(!validLoggedInUser){
+
+    return {
+      deviceToken:null,
+      devicePlatform:null,
+      deviceTokenType:null,
+      deviceTokenUpdatedAt:null
+    };
+  }
+
+
+  const deviceToken =
+    String(
+      user.deviceToken ||
+      localStorage.getItem(
+        "scrubMateDeviceToken"
+      ) ||
+      ""
+    ).trim();
+
+
+  const devicePlatform =
+    String(
+      user.devicePlatform ||
+      localStorage.getItem(
+        "scrubMateDevicePlatform"
+      ) ||
+      getScrubMatePlatform()
+    ).trim();
+
+
+  const deviceTokenType =
+    String(
+      user.deviceTokenType ||
+      localStorage.getItem(
+        "scrubMateDeviceTokenType"
+      ) ||
+      (
+        devicePlatform === "ios"
+          ? "apns"
+          : ""
+      )
+    ).trim();
+
+
+  const deviceTokenUpdatedAt =
+    user.deviceTokenUpdatedAt ||
+    null;
+
+
+  return {
+    deviceToken:
+      deviceToken || null,
+
+    devicePlatform:
+      deviceToken
+        ? devicePlatform || null
+        : null,
+
+    deviceTokenType:
+      deviceToken
+        ? deviceTokenType || null
+        : null,
+
+    deviceTokenUpdatedAt:
+      deviceToken
+        ? deviceTokenUpdatedAt
+        : null
+  };
+}
+
+
+/* =========================================
    BUILD DATABASE ROW
 ========================================= */
 
@@ -3559,6 +3678,9 @@ function buildScrubMateOrderRow(
   const bill =
     getScrubMateBookingSnapshot();
 
+  const pushToken =
+    getScrubMateOrderPushToken();
+
   const couponApplied =
     scurbAppliedCoupon &&
     bill.couponDiscount > 0;
@@ -3571,6 +3693,23 @@ function buildScrubMateOrderRow(
       localStorage.getItem("scrubMateGuestMode") === "true"
         ? "guest"
         : "registered",
+
+    /*
+     Real push-notification token belonging to the
+     logged-in customer who placed this order.
+    */
+
+    device_token:
+      pushToken.deviceToken,
+
+    device_platform:
+      pushToken.devicePlatform,
+
+    device_token_type:
+      pushToken.deviceTokenType,
+
+    device_token_updated_at:
+      pushToken.deviceTokenUpdatedAt,
 
     service_address:location.serviceAddress,
     street_name:location.streetName || null,
