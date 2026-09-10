@@ -663,36 +663,34 @@ input{
 
 
 /* =========================================
-   SWIGGY / BLINKIT STYLE PULL TO REFRESH
-   Spinner only + draggable home content
+   SMOOTH PULL TO REFRESH
+   Spinner appears inside pulled white space
 ========================================= */
+
+.scurb-home-page{
+  position:relative;
+}
 
 .scurbPullRefresh{
   position:absolute;
-  left:50%;
+  left:0;
+  right:0;
   top:72px;
-  z-index:90;
+  z-index:70;
 
-  width:34px;
-  height:34px;
+  height:0;
 
   display:flex;
   align-items:center;
   justify-content:center;
 
-  border-radius:50%;
-  background:#ffffff;
-
-  box-shadow:0 4px 14px rgba(0,0,0,.12);
-
-  opacity:0;
-  transform:translate(-50%,-18px) scale(.85);
-
+  overflow:hidden;
   pointer-events:none;
 
-  transition:
-    opacity .15s ease,
-    transform .18s ease;
+  opacity:0;
+  background:#ffffff;
+
+  will-change:height,opacity;
 }
 
 .scurbPullRefresh.show{
@@ -700,23 +698,40 @@ input{
 }
 
 .scurbPullSpinner{
-  width:19px;
-  height:19px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
 
-  border:2.5px solid #dbeeee;
-  border-top-color:var(--primary);
-
-  border-radius:50%;
-
-  transform:rotate(var(--pull-rotate,0deg));
+  transform:translateY(-2px);
 }
 
-.scurbPullRefresh.loading .scurbPullSpinner{
-  animation:scurbPullSpin .72s linear infinite;
+.scurbPullSpinner span{
+  width:6px;
+  height:6px;
+
+  border-radius:50%;
+  background:var(--primary);
+
+  opacity:.35;
+  transform:scale(.75);
+}
+
+.scurbPullRefresh.loading .scurbPullSpinner span{
+  animation:scurbDots .85s ease-in-out infinite;
+}
+
+.scurbPullRefresh.loading .scurbPullSpinner span:nth-child(2){
+  animation-delay:.12s;
+}
+
+.scurbPullRefresh.loading .scurbPullSpinner span:nth-child(3){
+  animation-delay:.24s;
 }
 
 .scurb-home-content{
   will-change:transform;
+  transform:translate3d(0,0,0);
 }
 
 .scurb-home-page.scurbPullDragging .scurb-home-content{
@@ -724,13 +739,21 @@ input{
 }
 
 .scurb-home-page.scurbPullReturning .scurb-home-content{
-  transition:transform .30s cubic-bezier(.2,.75,.25,1) !important;
+  transition:transform .24s cubic-bezier(.22,.75,.25,1) !important;
 }
 
-@keyframes scurbPullSpin{
-  to{
-    transform:rotate(360deg);
+@keyframes scurbDots{
+  0%,80%,100%{
+    opacity:.3;
+    transform:scale(.72);
   }
+
+  40%{
+    opacity:1;
+    transform:scale(1);
+  }
+}
+
 }
 
 </style>
@@ -1503,7 +1526,11 @@ input{
 
   <!-- Pull-to-refresh spinner -->
   <div class="scurbPullRefresh" id="scurbPullRefresh" aria-hidden="true">
-    <div class="scurbPullSpinner"></div>
+    <div class="scurbPullSpinner">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
   </div>
 
 <main class="scurb-home-content" id="scurbHomeContent">
@@ -5684,8 +5711,8 @@ window.addEventListener("DOMContentLoaded", function(){
 
 <script>
 /* =========================================
-   SWIGGY / BLINKIT STYLE PULL TO REFRESH
-   Drag home content down + spinner only
+   SMOOTH PULL TO REFRESH
+   Spinner stays inside white pulled gap
 ========================================= */
 
 (function(){
@@ -5708,14 +5735,16 @@ window.addEventListener("DOMContentLoaded", function(){
   }
 
   let startY = 0;
-  let currentY = 0;
+  let latestY = 0;
   let pullY = 0;
 
   let dragging = false;
   let refreshing = false;
+  let frameRequested = false;
 
-  const triggerDistance = 78;
-  const maxDistance = 112;
+  const triggerDistance = 72;
+  const maxDistance = 105;
+  const refreshHold = 54;
 
 
   function isHomeVisible(){
@@ -5738,32 +5767,36 @@ window.addEventListener("DOMContentLoaded", function(){
   }
 
 
-  function setPull(distance){
+  function renderPull(){
 
-    pullY = Math.max(
-      0,
-      Math.min(maxDistance, distance)
-    );
+    frameRequested = false;
+
+    if(!dragging){
+      return;
+    }
+
+    const raw =
+      Math.max(0, latestY - startY);
+
+    /*
+      Smooth resistance.
+      Fast finger movement becomes softer content movement.
+    */
+    const distance =
+      Math.min(
+        maxDistance,
+        raw * 0.46
+      );
+
+    pullY = distance;
 
     homeContent.style.transform =
-      `translate3d(0, ${pullY}px, 0)`;
+      `translate3d(0,${distance}px,0)`;
 
-    const spinnerMove =
-      Math.min(34, pullY * 0.32);
+    refreshBox.style.height =
+      `${distance}px`;
 
-    const spinnerScale =
-      0.85 +
-      Math.min(0.15, pullY / 300);
-
-    refreshBox.style.transform =
-      `translate(-50%, ${spinnerMove - 18}px) scale(${spinnerScale})`;
-
-    refreshBox.style.setProperty(
-      "--pull-rotate",
-      Math.min(330, pullY * 3.3) + "deg"
-    );
-
-    if(pullY > 6){
+    if(distance > 5){
       refreshBox.classList.add("show");
     }
     else{
@@ -5773,7 +5806,22 @@ window.addEventListener("DOMContentLoaded", function(){
   }
 
 
-  function returnHomeContent(){
+  function requestRender(){
+
+    if(frameRequested){
+      return;
+    }
+
+    frameRequested = true;
+
+    requestAnimationFrame(
+      renderPull
+    );
+
+  }
+
+
+  function resetUI(){
 
     homePage.classList.remove(
       "scurbPullDragging"
@@ -5786,8 +5834,8 @@ window.addEventListener("DOMContentLoaded", function(){
     homeContent.style.transform =
       "translate3d(0,0,0)";
 
-    refreshBox.style.transform =
-      "translate(-50%,-18px) scale(.85)";
+    refreshBox.style.height =
+      "0px";
 
     refreshBox.classList.remove(
       "show",
@@ -5805,30 +5853,21 @@ window.addEventListener("DOMContentLoaded", function(){
       );
 
       refreshBox.style.removeProperty(
-        "transform"
+        "height"
       );
 
-      refreshBox.style.removeProperty(
-        "--pull-rotate"
-      );
-
-    }, 320);
+    },250);
 
   }
 
 
-  async function refreshData(){
+  async function doRefresh(){
 
     if(refreshing){
       return;
     }
 
     refreshing = true;
-
-    refreshBox.classList.add(
-      "show",
-      "loading"
-    );
 
     homePage.classList.remove(
       "scurbPullDragging"
@@ -5838,15 +5877,16 @@ window.addEventListener("DOMContentLoaded", function(){
       "scurbPullReturning"
     );
 
-    /*
-      Keep content slightly pulled while
-      refresh is happening.
-    */
-    homeContent.style.transform =
-      "translate3d(0,58px,0)";
+    refreshBox.classList.add(
+      "show",
+      "loading"
+    );
 
-    refreshBox.style.transform =
-      "translate(-50%,8px) scale(1)";
+    homeContent.style.transform =
+      `translate3d(0,${refreshHold}px,0)`;
+
+    refreshBox.style.height =
+      `${refreshHold}px`;
 
     try{
 
@@ -5858,7 +5898,7 @@ window.addEventListener("DOMContentLoaded", function(){
       }
 
       await new Promise(function(resolve){
-        setTimeout(resolve, 420);
+        setTimeout(resolve,300);
       });
 
     }
@@ -5873,7 +5913,7 @@ window.addEventListener("DOMContentLoaded", function(){
 
     refreshing = false;
 
-    returnHomeContent();
+    resetUI();
 
   }
 
@@ -5895,9 +5935,13 @@ window.addEventListener("DOMContentLoaded", function(){
       startY =
         event.touches[0].clientY;
 
-      currentY = startY;
+      latestY = startY;
       pullY = 0;
       dragging = true;
+
+      homePage.classList.add(
+        "scurbPullDragging"
+      );
 
     },
     { passive:true }
@@ -5917,31 +5961,15 @@ window.addEventListener("DOMContentLoaded", function(){
         return;
       }
 
-      currentY =
+      latestY =
         event.touches[0].clientY;
 
       const delta =
-        currentY - startY;
+        latestY - startY;
 
       if(delta <= 0){
-
-        setPull(0);
         return;
-
       }
-
-      /*
-        Resistance effect like delivery apps.
-        Finger moves more than content.
-      */
-      const resisted =
-        delta * 0.52;
-
-      setPull(resisted);
-
-      homePage.classList.add(
-        "scurbPullDragging"
-      );
 
       if(
         event.cancelable &&
@@ -5949,6 +5977,8 @@ window.addEventListener("DOMContentLoaded", function(){
       ){
         event.preventDefault();
       }
+
+      requestRender();
 
     },
     { passive:false }
@@ -5968,13 +5998,11 @@ window.addEventListener("DOMContentLoaded", function(){
 
       dragging = false;
 
-      if(
-        pullY >= triggerDistance
-      ){
-        refreshData();
+      if(pullY >= triggerDistance){
+        doRefresh();
       }
       else{
-        returnHomeContent();
+        resetUI();
       }
 
     },
@@ -5986,10 +6014,12 @@ window.addEventListener("DOMContentLoaded", function(){
     "touchcancel",
     function(){
 
-      if(!refreshing){
-        dragging = false;
-        returnHomeContent();
+      if(refreshing){
+        return;
       }
+
+      dragging = false;
+      resetUI();
 
     },
     { passive:true }
