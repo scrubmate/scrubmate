@@ -663,75 +663,68 @@ input{
 
 
 /* =========================================
-   PULL TO REFRESH
-   Small spinner below the top navigation.
+   SWIGGY / BLINKIT STYLE PULL TO REFRESH
+   Spinner only + draggable home content
 ========================================= */
 
 .scurbPullRefresh{
   position:absolute;
-  left:0;
-  right:0;
+  left:50%;
   top:72px;
-  z-index:80;
+  z-index:90;
 
-  height:0;
-  overflow:hidden;
+  width:34px;
+  height:34px;
 
   display:flex;
   align-items:center;
   justify-content:center;
 
-  pointer-events:none;
-  background:transparent;
+  border-radius:50%;
+  background:#ffffff;
 
-  transition:height .18s ease;
+  box-shadow:0 4px 14px rgba(0,0,0,.12);
+
+  opacity:0;
+  transform:translate(-50%,-18px) scale(.85);
+
+  pointer-events:none;
+
+  transition:
+    opacity .15s ease,
+    transform .18s ease;
 }
 
 .scurbPullRefresh.show{
-  height:58px;
-}
-
-.scurbPullRefreshInner{
-  min-width:132px;
-  height:38px;
-  padding:0 14px;
-
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:9px;
-
-  background:#ffffff;
-  border:1px solid rgba(0,0,0,.06);
-  border-radius:999px;
-
-  box-shadow:0 5px 18px rgba(0,0,0,.10);
+  opacity:1;
 }
 
 .scurbPullSpinner{
-  width:18px;
-  height:18px;
-  flex:none;
+  width:19px;
+  height:19px;
 
-  border:2.5px solid #dceeee;
+  border:2.5px solid #dbeeee;
   border-top-color:var(--primary);
 
   border-radius:50%;
-}
 
-.scurbPullRefresh.pulling .scurbPullSpinner{
-  transform:rotate(var(--pull-rotate, 0deg));
+  transform:rotate(var(--pull-rotate,0deg));
 }
 
 .scurbPullRefresh.loading .scurbPullSpinner{
-  animation:scurbPullSpin .75s linear infinite;
+  animation:scurbPullSpin .72s linear infinite;
 }
 
-.scurbPullText{
-  color:#5d6666;
-  font-size:12px;
-  font-weight:700;
-  white-space:nowrap;
+.scurb-home-content{
+  will-change:transform;
+}
+
+.scurb-home-page.scurbPullDragging .scurb-home-content{
+  transition:none !important;
+}
+
+.scurb-home-page.scurbPullReturning .scurb-home-content{
+  transition:transform .30s cubic-bezier(.2,.75,.25,1) !important;
 }
 
 @keyframes scurbPullSpin{
@@ -739,7 +732,6 @@ input{
     transform:rotate(360deg);
   }
 }
-
 
 </style>
 <link rel="stylesheet" href="new.css">
@@ -1509,16 +1501,12 @@ input{
 
   </header>
 
-  <!-- Pull to refresh indicator -->
+  <!-- Pull-to-refresh spinner -->
   <div class="scurbPullRefresh" id="scurbPullRefresh" aria-hidden="true">
-    <div class="scurbPullRefreshInner">
-      <div class="scurbPullSpinner"></div>
-      <span class="scurbPullText" id="scurbPullText">Pull to refresh</span>
-    </div>
+    <div class="scurbPullSpinner"></div>
   </div>
 
-
-  <main class="scurb-home-content" id="scurbHomeContent">
+<main class="scurb-home-content" id="scurbHomeContent">
 
    <section class="scurbBannerSection">
 
@@ -5696,37 +5684,44 @@ window.addEventListener("DOMContentLoaded", function(){
 
 <script>
 /* =========================================
-   MOBILE PULL TO REFRESH
-   Works only when home content is at top.
+   SWIGGY / BLINKIT STYLE PULL TO REFRESH
+   Drag home content down + spinner only
 ========================================= */
 
 (function(){
 
-  const homePage = document.getElementById("scurbHomePage");
-  const homeContent = document.getElementById("scurbHomeContent");
-  const refreshBox = document.getElementById("scurbPullRefresh");
-  const refreshText = document.getElementById("scurbPullText");
+  const homePage =
+    document.getElementById("scurbHomePage");
+
+  const homeContent =
+    document.getElementById("scurbHomeContent");
+
+  const refreshBox =
+    document.getElementById("scurbPullRefresh");
 
   if(
     !homePage ||
     !homeContent ||
-    !refreshBox ||
-    !refreshText
+    !refreshBox
   ){
     return;
   }
 
   let startY = 0;
   let currentY = 0;
-  let pulling = false;
+  let pullY = 0;
+
+  let dragging = false;
   let refreshing = false;
 
   const triggerDistance = 78;
-  const maxPullDistance = 115;
+  const maxDistance = 112;
+
 
   function isHomeVisible(){
 
-    const style = window.getComputedStyle(homePage);
+    const style =
+      window.getComputedStyle(homePage);
 
     return (
       style.display !== "none" &&
@@ -5735,31 +5730,94 @@ window.addEventListener("DOMContentLoaded", function(){
 
   }
 
-  function homeAtTop(){
+
+  function isAtTop(){
 
     return homeContent.scrollTop <= 1;
 
   }
 
-  function resetPull(){
 
-    pulling = false;
+  function setPull(distance){
 
-    refreshBox.classList.remove(
-      "show",
-      "pulling"
+    pullY = Math.max(
+      0,
+      Math.min(maxDistance, distance)
     );
 
-    refreshBox.style.removeProperty(
-      "--pull-rotate"
+    homeContent.style.transform =
+      `translate3d(0, ${pullY}px, 0)`;
+
+    const spinnerMove =
+      Math.min(34, pullY * 0.32);
+
+    const spinnerScale =
+      0.85 +
+      Math.min(0.15, pullY / 300);
+
+    refreshBox.style.transform =
+      `translate(-50%, ${spinnerMove - 18}px) scale(${spinnerScale})`;
+
+    refreshBox.style.setProperty(
+      "--pull-rotate",
+      Math.min(330, pullY * 3.3) + "deg"
     );
 
-    refreshText.textContent =
-      "Pull to refresh";
+    if(pullY > 6){
+      refreshBox.classList.add("show");
+    }
+    else{
+      refreshBox.classList.remove("show");
+    }
 
   }
 
-  async function doRefresh(){
+
+  function returnHomeContent(){
+
+    homePage.classList.remove(
+      "scurbPullDragging"
+    );
+
+    homePage.classList.add(
+      "scurbPullReturning"
+    );
+
+    homeContent.style.transform =
+      "translate3d(0,0,0)";
+
+    refreshBox.style.transform =
+      "translate(-50%,-18px) scale(.85)";
+
+    refreshBox.classList.remove(
+      "show",
+      "loading"
+    );
+
+    setTimeout(function(){
+
+      homePage.classList.remove(
+        "scurbPullReturning"
+      );
+
+      homeContent.style.removeProperty(
+        "transform"
+      );
+
+      refreshBox.style.removeProperty(
+        "transform"
+      );
+
+      refreshBox.style.removeProperty(
+        "--pull-rotate"
+      );
+
+    }, 320);
+
+  }
+
+
+  async function refreshData(){
 
     if(refreshing){
       return;
@@ -5772,31 +5830,35 @@ window.addEventListener("DOMContentLoaded", function(){
       "loading"
     );
 
-    refreshBox.classList.remove(
-      "pulling"
+    homePage.classList.remove(
+      "scurbPullDragging"
     );
 
-    refreshText.textContent =
-      "Refreshing...";
+    homePage.classList.add(
+      "scurbPullReturning"
+    );
+
+    /*
+      Keep content slightly pulled while
+      refresh is happening.
+    */
+    homeContent.style.transform =
+      "translate3d(0,58px,0)";
+
+    refreshBox.style.transform =
+      "translate(-50%,8px) scale(1)";
 
     try{
 
       if(
-        typeof loadServicePricesFromSupabase === "function"
+        typeof loadServicePricesFromSupabase
+          === "function"
       ){
         await loadServicePricesFromSupabase();
       }
 
-      // Gives the UI a natural pull-refresh feel.
       await new Promise(function(resolve){
-        setTimeout(resolve, 450);
-      });
-
-      refreshText.textContent =
-        "Updated";
-
-      await new Promise(function(resolve){
-        setTimeout(resolve, 300);
+        setTimeout(resolve, 420);
       });
 
     }
@@ -5807,23 +5869,14 @@ window.addEventListener("DOMContentLoaded", function(){
         error
       );
 
-      refreshText.textContent =
-        "Try again";
-
-      await new Promise(function(resolve){
-        setTimeout(resolve, 500);
-      });
-
     }
-
-    refreshBox.classList.remove(
-      "loading",
-      "show"
-    );
 
     refreshing = false;
 
+    returnHomeContent();
+
   }
+
 
   homeContent.addEventListener(
     "touchstart",
@@ -5832,27 +5885,31 @@ window.addEventListener("DOMContentLoaded", function(){
       if(
         refreshing ||
         !isHomeVisible() ||
-        !homeAtTop() ||
+        !isAtTop() ||
         !event.touches ||
         !event.touches.length
       ){
         return;
       }
 
-      startY = event.touches[0].clientY;
+      startY =
+        event.touches[0].clientY;
+
       currentY = startY;
-      pulling = true;
+      pullY = 0;
+      dragging = true;
 
     },
     { passive:true }
   );
+
 
   homeContent.addEventListener(
     "touchmove",
     function(event){
 
       if(
-        !pulling ||
+        !dragging ||
         refreshing ||
         !event.touches ||
         !event.touches.length
@@ -5860,54 +5917,35 @@ window.addEventListener("DOMContentLoaded", function(){
         return;
       }
 
-      currentY = event.touches[0].clientY;
+      currentY =
+        event.touches[0].clientY;
 
-      const rawDistance =
+      const delta =
         currentY - startY;
 
-      if(rawDistance <= 0){
-        resetPull();
+      if(delta <= 0){
+
+        setPull(0);
         return;
+
       }
 
-      const distance =
-        Math.min(
-          maxPullDistance,
-          rawDistance * 0.65
-        );
+      /*
+        Resistance effect like delivery apps.
+        Finger moves more than content.
+      */
+      const resisted =
+        delta * 0.52;
 
-      refreshBox.classList.add(
-        "show",
-        "pulling"
+      setPull(resisted);
+
+      homePage.classList.add(
+        "scurbPullDragging"
       );
-
-      const rotation =
-        Math.min(
-          300,
-          distance * 3
-        );
-
-      refreshBox.style.setProperty(
-        "--pull-rotate",
-        rotation + "deg"
-      );
-
-      if(distance >= triggerDistance){
-
-        refreshText.textContent =
-          "Release to refresh";
-
-      }
-      else{
-
-        refreshText.textContent =
-          "Pull to refresh";
-
-      }
 
       if(
         event.cancelable &&
-        homeAtTop()
+        isAtTop()
       ){
         event.preventDefault();
       }
@@ -5916,49 +5954,41 @@ window.addEventListener("DOMContentLoaded", function(){
     { passive:false }
   );
 
+
   homeContent.addEventListener(
     "touchend",
     function(){
 
       if(
-        !pulling ||
+        !dragging ||
         refreshing
       ){
         return;
       }
 
-      const distance =
-        Math.min(
-          maxPullDistance,
-          Math.max(
-            0,
-            (currentY - startY) * 0.65
-          )
-        );
+      dragging = false;
 
-      pulling = false;
-
-      if(distance >= triggerDistance){
-
-        doRefresh();
-
+      if(
+        pullY >= triggerDistance
+      ){
+        refreshData();
       }
       else{
-
-        resetPull();
-
+        returnHomeContent();
       }
 
     },
     { passive:true }
   );
 
+
   homeContent.addEventListener(
     "touchcancel",
     function(){
 
       if(!refreshing){
-        resetPull();
+        dragging = false;
+        returnHomeContent();
       }
 
     },
