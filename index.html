@@ -661,6 +661,86 @@ input{
   animation-play-state:paused;
 }
 
+
+/* =========================================
+   PULL TO REFRESH
+   Small spinner below the top navigation.
+========================================= */
+
+.scurbPullRefresh{
+  position:absolute;
+  left:0;
+  right:0;
+  top:72px;
+  z-index:80;
+
+  height:0;
+  overflow:hidden;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  pointer-events:none;
+  background:transparent;
+
+  transition:height .18s ease;
+}
+
+.scurbPullRefresh.show{
+  height:58px;
+}
+
+.scurbPullRefreshInner{
+  min-width:132px;
+  height:38px;
+  padding:0 14px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+
+  background:#ffffff;
+  border:1px solid rgba(0,0,0,.06);
+  border-radius:999px;
+
+  box-shadow:0 5px 18px rgba(0,0,0,.10);
+}
+
+.scurbPullSpinner{
+  width:18px;
+  height:18px;
+  flex:none;
+
+  border:2.5px solid #dceeee;
+  border-top-color:var(--primary);
+
+  border-radius:50%;
+}
+
+.scurbPullRefresh.pulling .scurbPullSpinner{
+  transform:rotate(var(--pull-rotate, 0deg));
+}
+
+.scurbPullRefresh.loading .scurbPullSpinner{
+  animation:scurbPullSpin .75s linear infinite;
+}
+
+.scurbPullText{
+  color:#5d6666;
+  font-size:12px;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+@keyframes scurbPullSpin{
+  to{
+    transform:rotate(360deg);
+  }
+}
+
+
 </style>
 <link rel="stylesheet" href="new.css">
 <link rel="stylesheet" href="copoun.css">
@@ -1428,6 +1508,14 @@ input{
     </button>
 
   </header>
+
+  <!-- Pull to refresh indicator -->
+  <div class="scurbPullRefresh" id="scurbPullRefresh" aria-hidden="true">
+    <div class="scurbPullRefreshInner">
+      <div class="scurbPullSpinner"></div>
+      <span class="scurbPullText" id="scurbPullText">Pull to refresh</span>
+    </div>
+  </div>
 
 
   <main class="scurb-home-content" id="scurbHomeContent">
@@ -4626,7 +4714,263 @@ const SUPABASE_URL = "https://tigomzzcyxzwfvemmbqp.supabase.co";
     SUPABASE_ANON_KEY
   );
 
+
   console.log("✅ Supabase connected", supabaseClient);
+
+  /* =========================================
+     SERVICE PRICES FROM SUPABASE
+     Only updates current price + original price.
+     Existing design / HTML structure stays unchanged.
+  ========================================= */
+
+  async function loadServicePricesFromSupabase(){
+
+    try{
+
+      const { data, error } =
+        await supabaseClient
+          .from("service_prices")
+          .select("service_name, price, old_price");
+
+      if(error){
+        console.error(
+          "❌ Service prices load failed:",
+          error
+        );
+        return;
+      }
+
+      if(!Array.isArray(data)){
+        return;
+      }
+
+      data.forEach(function(service){
+
+        const serviceName =
+          String(service?.service_name || "").trim();
+
+        if(!serviceName){
+          return;
+        }
+
+        const cards =
+          document.querySelectorAll(
+            ".scurbServiceCard[data-service]"
+          );
+
+        cards.forEach(function(card){
+
+          const cardService =
+            String(
+              card.getAttribute("data-service") || ""
+            ).trim();
+
+          if(cardService !== serviceName){
+            return;
+          }
+
+          const discountPrice =
+            card.querySelector(
+              ".scurbServicePrice"
+            );
+
+          const originalPrice =
+            card.querySelector(
+              ".scurbServiceOldPrice"
+            );
+
+          if(
+            discountPrice &&
+            service.price !== null &&
+            service.price !== undefined
+          ){
+            discountPrice.textContent =
+              "₹" + Number(service.price);
+          }
+
+          if(originalPrice){
+
+            if(
+              service.old_price !== null &&
+              service.old_price !== undefined
+            ){
+              originalPrice.textContent =
+                "₹" + Number(service.old_price);
+
+              originalPrice.style.display = "";
+            }
+            else{
+              originalPrice.style.display = "none";
+            }
+
+          }
+
+        });
+
+      });
+
+      console.log(
+        "✅ Service prices loaded from Supabase"
+      );
+
+    }
+    catch(error){
+
+      console.error(
+        "❌ Service price loading error:",
+        error
+      );
+
+    }
+
+  }
+
+  /* =========================================
+     LIVE SERVICE PRICE UPDATES - SUPABASE REALTIME
+     Updates discount + original price instantly.
+  ========================================= */
+
+  function updateSingleServicePriceLive(service){
+
+    const serviceName =
+      String(service?.service_name || "").trim();
+
+    if(!serviceName){
+      return;
+    }
+
+    const cards =
+      document.querySelectorAll(
+        ".scurbServiceCard[data-service]"
+      );
+
+    cards.forEach(function(card){
+
+      const cardService =
+        String(
+          card.getAttribute("data-service") || ""
+        ).trim();
+
+      if(cardService !== serviceName){
+        return;
+      }
+
+      const discountPrice =
+        card.querySelector(
+          ".scurbServicePrice"
+        );
+
+      const originalPrice =
+        card.querySelector(
+          ".scurbServiceOldPrice"
+        );
+
+      if(
+        discountPrice &&
+        service.price !== null &&
+        service.price !== undefined
+      ){
+        discountPrice.textContent =
+          "₹" + Number(service.price);
+      }
+
+      if(originalPrice){
+
+        if(
+          service.old_price !== null &&
+          service.old_price !== undefined
+        ){
+          originalPrice.textContent =
+            "₹" + Number(service.old_price);
+
+          originalPrice.style.display = "";
+        }
+        else{
+          originalPrice.style.display = "none";
+        }
+
+      }
+
+    });
+
+  }
+
+
+  function startServicePriceRealtime(){
+
+    try{
+
+      supabaseClient
+        .channel("service-prices-live")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "service_prices"
+          },
+          function(payload){
+
+            console.log(
+              "🔄 Live service price update:",
+              payload
+            );
+
+            if(
+              payload.eventType === "DELETE"
+            ){
+              return;
+            }
+
+            if(payload.new){
+              updateSingleServicePriceLive(
+                payload.new
+              );
+            }
+
+          }
+        )
+        .subscribe(function(status){
+
+          console.log(
+            "📡 Service prices realtime:",
+            status
+          );
+
+        });
+
+    }
+    catch(error){
+
+      console.error(
+        "❌ Realtime subscription error:",
+        error
+      );
+
+    }
+
+  }
+
+
+  // Load database prices after the page HTML is ready.
+  if(document.readyState === "loading"){
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      function(){
+        loadServicePricesFromSupabase();
+        startServicePriceRealtime();
+      }
+    );
+
+  }
+  else{
+
+    loadServicePricesFromSupabase();
+    startServicePriceRealtime();
+
+  }
+
   /* =========================================
    SAVE PROFILE SILENTLY TO SUPABASE
 ========================================= */
@@ -5347,6 +5691,281 @@ window.addEventListener("DOMContentLoaded", function(){
 });
 
 
+</script>
+
+
+<script>
+/* =========================================
+   MOBILE PULL TO REFRESH
+   Works only when home content is at top.
+========================================= */
+
+(function(){
+
+  const homePage = document.getElementById("scurbHomePage");
+  const homeContent = document.getElementById("scurbHomeContent");
+  const refreshBox = document.getElementById("scurbPullRefresh");
+  const refreshText = document.getElementById("scurbPullText");
+
+  if(
+    !homePage ||
+    !homeContent ||
+    !refreshBox ||
+    !refreshText
+  ){
+    return;
+  }
+
+  let startY = 0;
+  let currentY = 0;
+  let pulling = false;
+  let refreshing = false;
+
+  const triggerDistance = 78;
+  const maxPullDistance = 115;
+
+  function isHomeVisible(){
+
+    const style = window.getComputedStyle(homePage);
+
+    return (
+      style.display !== "none" &&
+      style.visibility !== "hidden"
+    );
+
+  }
+
+  function homeAtTop(){
+
+    return homeContent.scrollTop <= 1;
+
+  }
+
+  function resetPull(){
+
+    pulling = false;
+
+    refreshBox.classList.remove(
+      "show",
+      "pulling"
+    );
+
+    refreshBox.style.removeProperty(
+      "--pull-rotate"
+    );
+
+    refreshText.textContent =
+      "Pull to refresh";
+
+  }
+
+  async function doRefresh(){
+
+    if(refreshing){
+      return;
+    }
+
+    refreshing = true;
+
+    refreshBox.classList.add(
+      "show",
+      "loading"
+    );
+
+    refreshBox.classList.remove(
+      "pulling"
+    );
+
+    refreshText.textContent =
+      "Refreshing...";
+
+    try{
+
+      if(
+        typeof loadServicePricesFromSupabase === "function"
+      ){
+        await loadServicePricesFromSupabase();
+      }
+
+      // Gives the UI a natural pull-refresh feel.
+      await new Promise(function(resolve){
+        setTimeout(resolve, 450);
+      });
+
+      refreshText.textContent =
+        "Updated";
+
+      await new Promise(function(resolve){
+        setTimeout(resolve, 300);
+      });
+
+    }
+    catch(error){
+
+      console.error(
+        "Pull refresh error:",
+        error
+      );
+
+      refreshText.textContent =
+        "Try again";
+
+      await new Promise(function(resolve){
+        setTimeout(resolve, 500);
+      });
+
+    }
+
+    refreshBox.classList.remove(
+      "loading",
+      "show"
+    );
+
+    refreshing = false;
+
+  }
+
+  homeContent.addEventListener(
+    "touchstart",
+    function(event){
+
+      if(
+        refreshing ||
+        !isHomeVisible() ||
+        !homeAtTop() ||
+        !event.touches ||
+        !event.touches.length
+      ){
+        return;
+      }
+
+      startY = event.touches[0].clientY;
+      currentY = startY;
+      pulling = true;
+
+    },
+    { passive:true }
+  );
+
+  homeContent.addEventListener(
+    "touchmove",
+    function(event){
+
+      if(
+        !pulling ||
+        refreshing ||
+        !event.touches ||
+        !event.touches.length
+      ){
+        return;
+      }
+
+      currentY = event.touches[0].clientY;
+
+      const rawDistance =
+        currentY - startY;
+
+      if(rawDistance <= 0){
+        resetPull();
+        return;
+      }
+
+      const distance =
+        Math.min(
+          maxPullDistance,
+          rawDistance * 0.65
+        );
+
+      refreshBox.classList.add(
+        "show",
+        "pulling"
+      );
+
+      const rotation =
+        Math.min(
+          300,
+          distance * 3
+        );
+
+      refreshBox.style.setProperty(
+        "--pull-rotate",
+        rotation + "deg"
+      );
+
+      if(distance >= triggerDistance){
+
+        refreshText.textContent =
+          "Release to refresh";
+
+      }
+      else{
+
+        refreshText.textContent =
+          "Pull to refresh";
+
+      }
+
+      if(
+        event.cancelable &&
+        homeAtTop()
+      ){
+        event.preventDefault();
+      }
+
+    },
+    { passive:false }
+  );
+
+  homeContent.addEventListener(
+    "touchend",
+    function(){
+
+      if(
+        !pulling ||
+        refreshing
+      ){
+        return;
+      }
+
+      const distance =
+        Math.min(
+          maxPullDistance,
+          Math.max(
+            0,
+            (currentY - startY) * 0.65
+          )
+        );
+
+      pulling = false;
+
+      if(distance >= triggerDistance){
+
+        doRefresh();
+
+      }
+      else{
+
+        resetPull();
+
+      }
+
+    },
+    { passive:true }
+  );
+
+  homeContent.addEventListener(
+    "touchcancel",
+    function(){
+
+      if(!refreshing){
+        resetPull();
+      }
+
+    },
+    { passive:true }
+  );
+
+})();
 </script>
 
 </body>
